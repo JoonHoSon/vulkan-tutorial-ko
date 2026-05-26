@@ -1,0 +1,80 @@
+= 들어가며 (Introduction)
+include::common/header.adoc[]
+
+== 이 자습서를 따르기 전에 읽으십시오.
+
+[quote]
+____
+이 튜토리얼은 {vk}이 2016 년에 처음 출시 된 직후에 작성되었습니다. 그 이후로 많은 것이 바뀌었고이 튜토리얼은 더 이상 오늘날 {vk}을 사용하는 가장 좋은 방법을 반영하지 않습니다. 
+
+이 웹 사이트를 읽는 대신 가이드 또는 여기에 링크 된 자습서 중 하나를 따르는 것이 좋습니다. https://vulkan.org/learn
+____
+
+== About
+
+이 튜토리얼은{vk} 그래픽 및 컴퓨팅 API를 사용하는 기본 사항을 알려줍니다. link:https://www.khronos.org/vulkan/[{vk}]은 현대 그래픽 카드의 훨씬 더 나은 추상화를 제공하는 (_OpenGL로 알려진_)link:https://www.khronos.org/[Khronos 그룹]의 새로운 API입니다. 이 새로운 인터페이스를 사용하면 애플리케이션이 의도한 작업을 더 잘 설명할 수 있으며, 이는 link:https://en.wikipedia.org/wiki/OpenGL[OpenGL] 및 link:https://en.wikipedia.org/wiki/Direct3D[Direct3D]와 같은 기존 API에 비해 더 나은 성능과 덜 놀라운 드라이버 동작으로 이어질 수 있습니다. {vk}의 아이디어는 link:https://en.wikipedia.org/wiki/Direct3D#Direct3D_12[Direct3D 12] 및 link:https://en.wikipedia.org/wiki/Metal_(API)[Metal]의 아이디어와 유사하지만 {vk}은 완전히 크로스 플랫폼이라는 장점이 있으며 Windows, Linux 및 Android 용으로 동시에 개발할 수 있습니다.
+
+그러나 이러한 혜택에 대해 지불하는 가격은 훨씬 더 장황한 API로 작업해야 한다는 것입니다. 그래픽 API와 관련된 모든 세부 정보는 버퍼 및 텍스처 이미지와 같은 개체에 대한 초기 프레임 버퍼 생성 및 메모리 관리를 포함하여 응용 프로그램에서 처음부터 설정해야 합니다. 그래픽 드라이버는 손 잡기를 훨씬 덜 수행합니다. 즉, 올바른 동작을 보장하기 위해 응용 프로그램에서 더 많은 작업을 수행해야 합니다.
+
+여기서 테이크 아웃 메시지는 {vk}이 모든 사람을위한 것이 아니라는 것입니다. 고성능 컴퓨터 그래픽에 열광하는 프로그래머를 대상으로하며, 일부 작업을 기꺼이 투입합니다. 컴퓨터 그래픽이 아닌 게임 개발에 더 관심이 있다면 OpenGL 또는 Direct3D를 고수 할 수 있으며 조만간 {vk}에게 유리하게 사용되지 않습니다. 또 다른 대안은 link:https://en.wikipedia.org/wiki/Unreal_Engine#Unreal_Engine_4[언리얼 엔진] 또는 link:https://en.wikipedia.org/wiki/Unity_(game_engine)[유니티]와 같은 엔진을 사용하는 것입니다.이 엔진은 훨씬 더 높은 수준의 API를 노출하면서 {vk}을 사용할 수 있습니다.
+
+// 그 방법으로,이 자습서를 따라하기위한 몇 가지 전제 조건을 다루자 :
+다음은 이 자습서를 따라하기 위한 몇 가제 전제조건 입니다.
+
+* {vk} (link:https://developer.nvidia.com/vulkan-driver[NVIDIA], link:http://www.amd.com/en-us/innovations/software-technologies/technologies-gaming/vulkan[AMD], link:https://software.intel.com/en-us/blogs/2016/03/14/new-intel-vulkan-beta-1540204404-graphics-driver-for-windows-78110-1540[Intel], link:https://www.phoronix.com/scan.php?page=news_item&px=Apple-Silicon-Vulkan-MoltenVK[Apple Silicon (또는 Apple M1)]과 호환되는 그래픽 카드 및 드라이버
+* C++ 경험(RAII, initializer 목록과의 친숙함)
+* C++17 기능을 적절하게 지원하는 컴파일러(Visual Studio 2017+, GCC 7+, 또는 Clang 5+)
+* 3D 컴퓨터 그래픽에 대한 기존 경험
+
+이 튜토리얼은 OpenGL 또는 Direct3D 개념에 대한 지식을 가정하지는 않지만 3D 컴퓨터 그래픽의 기본 사항을 알아야합니다. 예를 들어, 원사 투영 뒤에있는 수학을 설명하지 않습니다. 컴퓨터 그래픽 개념을 훌륭하게 소개하려면이 link:https://paroj.github.io/gltut/[온라인 책]을 참조하십시오. 다른 훌륭한 컴퓨터 그래픽 리소스는 다음과 같습니다.
+
+* link:https://github.com/RayTracing/raytracing.github.io[Ray tracing in one weekend]
+* link:http://www.pbr-book.org/[Physically Based Rendering book]
+* 오픈 소스 link:https://github.com/Novum/vkQuake[Quake] 및 link:https://github.com/DustinHLand/vkDOOM3[DOOM 3]의 실제 엔진에 사용되는 {vk}
+
+원하는 경우 C++ 대신 C를 사용할 수 있지만 다른 선형 대수학 라이브러리를 사용해야하며 코드 구조화 측면에서 스스로 사용할 수 있습니다. 클래스 및 RAI와 같은 C++ 기능을 사용하여 논리 및 리소스 수명을 구성합니다. Rust 개발자를 위해 사용할 수있는이 자습서의 두 가지 대체 버전도 있습니다 : link:https://github.com/bwasty/vulkan-tutorial-rs[Vulkano 기반], link:https://kylemayes.github.io/vulkanalia[Vulkanalia 기반].
+
+다른 프로그래밍 언어를 사용하는 개발자를 위해 더 쉽게 따라갈 수 있도록 하고 기본 API에 대한 경험을 얻으려면 원래 C API를 사용하여 {vk}과 함께 작업할 것입니다. 그러나 C++을 사용하는 경우 지루하고 반복스러운 작업 중 일부를 추상화하고 특정 유형의 오류를 방지하는 데 도움이 되는 최신 link:https://github.com/KhronosGroup/Vulkan-Hpp[Vulkan-Hpp] 바인딩을 사용하는 것이 좋습니다.
+
+== E-Book
+
+이 자습서를 전자 책으로 읽는 것을 선호한다면 여기에서 EPUB 또는 PDF 버전을 다운로드할 수 있습니다.
+
+* link:https://vulkan-tutorial.com/resources/vulkan_tutorial_en.epub[EPUB]
+* link:https://vulkan-tutorial.com/resources/vulkan_tutorial_en.pdf[PDF]
+
+== 튜토리얼 구조
+
+우리는 {vk}의 작동 방식과 화면에서 첫 번째 삼각형을 얻기 위해해야 할 작업에 대한 개요로 시작할 것입니다. 모든 작은 단계의 목적은 전체 그림에서 기본 역할을 이해 한 후 더 의미가 있습니다. 다음으로, 우리는 link:https://lunarg.com/vulkan-sdk/[{vk} SDK], 선형 대수학 연산을위한 link:http://glm.g-truc.net/[GLM 라이브러리] 및 창 생성을 위해 link:http://www.glfw.org/[GLFW]로 개발 환경을 설정합니다. 이 튜토리얼은 Windows with Visual Studio 및 Ubuntu Linux with GCC에서이를 설정하는 방법을 다룹니다.
+
+그 후 첫 번째 삼각형을 렌더링하는 데 필요한 {vk} 프로그램의 모든 기본 구성 요소를 구현합니다. 각 장은 대략 다음과 같은 구조를 따릅니다.
+
+* 새로운 개념과 그 목적 소개
+* 모든 관련 API 호출을 사용하여 프로그램에 통합
+* Helper function을 이용한 추상화
+
+각 장은 이전 장의 후속 조치로 작성되지만 특정 {vk} 기능을 소개하는 독립 기사로 챕터를 읽을 수도 있습니다. 즉, 사이트는 또한 참조로 유용합니다. {vk} 기능과 유형은 모두 사양에 연결되어 있으므로 클릭하여 자세히 알아볼 수 있습니다. {vk}은 매우 새로운 API이므로 사양 자체에 몇 가지 단점이있을 수 있습니다. 이 link:https://github.com/KhronosGroup/Vulkan-Docs[Khronos 저장소]에 피드백을 제출하는 것이 좋습니다.
+
+앞서 언급했듯이 {vk} API에는 그래픽 하드웨어를 최대한 제어 할 수있는 많은 매개 변수를 가진 다소 장황한 API가 있습니다. 이렇게 하면 텍스처를 만드는 것과 같은 기본 작업은 매번 반복되어야 하는 많은 단계를 수행해야 합니다. 따라서 우리는 튜토리얼 전반에 걸쳐 도우미 기능의 우리 자신의 컬렉션을 만들 것입니다.
+
+모든 장은 또한 그 시점까지 전체 코드 목록에 대한 링크로 끝납니다. 코드의 구조에 대해 의심이 있거나 버그를 다루고 비교하려는 경우 참조할 수 있습니다. 모든 코드 파일은 정확성을 확인하기 위해 여러 공급 업체의 그래픽 카드에서 테스트되었습니다. 각 챕터에는 끝에 특정 주제와 관련된 질문을 할 수있는 댓글 섹션이 있습니다. 플랫폼, 드라이버 버전, 소스 코드, 예상 동작 및 실제 행동을 지정하여 저희가 도움을 주는 데 도움이 되도록 하십시오.
+
+이 튜토리얼은 커뮤니티의 노력이 될 것입니다. {vk}은 여전히 매우 새로운 API이며 모범 사례는 아직 실제로 확립되지 않았습니다. 튜토리얼 및 사이트 자체에 대한 피드백 유형이 있는 경우 주저하지 말고 link:https://github.com/Overv/VulkanTutorial[GitHub 저장소]에 문제를 제출하거나 요청을 가져옵니다. 당신은 튜토리얼에 대한 업데이트를 통보 할 저장소를 볼 수 있습니다.
+
+첫 번째 {vk} 전원 삼각형을 스크린에 그리는 의식을 거친 후에는 선형 변환, 텍스처 및 3D 모델을 포함하도록 프로그램을 확장하기 시작합니다.
+
+이전에 그래픽 API를 사용했다면 첫 번째 지오메트리가 화면에 나타날 때까지 많은 단계가 있을 수 있음을 알 수 있습니다. {vk}에는 이러한 초기 단계가 많이 있지만 각 개별 단계는 이해하기 쉽고 중복되지 않습니다. 지루한 삼각형이 있으면 완전히 질감이 있는 3D 모델을 그리는 것이 그렇게 많은 추가 작업을 수행하지 않으며 그 시점을 넘어서는 각 단계는 훨씬 더 보람이 있다는 점을 염두에 두는 것이 중요합니다.
+
+튜토리얼을 따르는 동안 문제가 발생하면 먼저 FAQ를 확인하여 문제와 솔루션이 이미 여기에 나열되어 있는지 확인하십시오. 그 후에도 여전히 붙어 있다면 가장 가까운 관련 장의 댓글 섹션에서 언제든지 도움을 요청하십시오.
+
+고성능 그래픽 API의 미래에 뛰어들기 위해 노력하십니까? link:Overview.html[자 이제 시작해 봅시다!]
+
+== 라이센스
+
+Copyright (C) 2015-2023, Alexander Overvoorde
+
+내용은 달리 명시되지 않는 한 link:https://creativecommons.org/licenses/by-sa/4.0/[CC BY-SA 4.0]에 따라 라이센스가 부여됩니다. 기부함으로써 귀하는 동일한 라이선스에 따라 귀하의 기부금을 대중에게 라이선스하는 데 동의합니다.
+
+소스 저장소의 코드 디렉터리의 코드 목록은 link:https://creativecommons.org/publicdomain/zero/1.0/[CC0 1.0 Universal]에 따라 라이선스가 부여됩니다. 해당 디렉토리에 기여함으로써 귀하는 동일한 공개 도메인과 같은 라이선스로 귀하의 기부금을 대중에게 라이선스하는 데 동의합니다.
+
+이 프로그램은 유용 할 것이라는 희망으로 배포되지만 보증없이; 심지어 부분적으로 목적을위한 상품성 또는 적합성의 묵시적 보증없이.

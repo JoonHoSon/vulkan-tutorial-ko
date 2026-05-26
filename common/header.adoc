@@ -1,0 +1,11 @@
+:toclevels: 4
+:source-highlighter: rouge
+:icon: font
+:figure-caption!:
+:imagesdir: ./assets
+:toc:
+// :source-linenums-option:
+
+include::glossary.adoc[]
+
+toc::[]

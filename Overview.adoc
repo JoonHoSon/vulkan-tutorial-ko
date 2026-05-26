@@ -1,0 +1,278 @@
+= 개요 (Overview)
+include::common/header.adoc[]
+
+이 장은 {vk}의 소개와 그것을 다루는 방법으로 시작됩니다. 그 후 우리는 첫 번째 삼각형에 필요한 재료를 살펴볼 것입니다. 이것은 당신에게 다음 장의 각 장을 배치 할 수있는 큰 그림을 제공합니다. {vk} API의 구조와 일반적인 사용 패턴을 다루면서 결론을 내릴 것입니다.
+
+== {vk}의 기원
+
+이전 그래픽 API와 마찬가지로 {vk}은 link:https://en.wikipedia.org/wiki/Graphics_processing_unit[GPU]에 대한 크로스 플랫폼 추상화로 설계되었습니다. 이러한 API의 대부분은 그들이 설계된 시대가 대부분 구성 가능한 고정 기능으로 제한 된 그래픽 하드웨어를 특징으로한다는 것입니다. 프로그래머는 표준 형식으로 정점 데이터를 제공해야했으며 조명 및 음영 옵션과 관련하여 GPU 제조업체의 자비에있었습니다.
+
+그래픽 카드 아키텍처가 성숙함에 따라 점점 더 프로그래밍 가능한 기능을 제공하기 시작했습니다. 이 모든 새로운 기능은 어떻게 든 기존 API와 통합되어야했습니다. 이로 인해 그래픽 드라이버 측면에서 이상적인 추상화보다 적은 수의 추측이 발생하여 프로그래머의 의도를 현대 그래픽 아키텍처에 매핑했습니다. 그렇기 때문에 게임의 성능을 향상시키기위한 많은 드라이버 업데이트가 있으며 때로는 상당한 마진이 있습니다. 이러한 드라이버의 복잡성으로 인해 애플리케이션 개발자는 link:https://en.wikipedia.org/wiki/Shader[셰이더]에게 허용되는 구문과 같이 공급업체 간의 불일치를 처리해야 합니다. 이러한 새로운 기능 외에도 지난 10 년 동안 강력한 그래픽 하드웨어가있는 모바일 장치가 유입되었습니다. 이 모바일 GPU는 에너지 및 공간 요구 사항에 따라 서로 다른 아키텍처를 가지고 있습니다. 이러한 예 중 하나는 link:https://en.wikipedia.org/wiki/Tiled_rendering[타일 렌더링]으로, 프로그래머에게이 기능을보다 잘 제어 할 수 있습니다. 이러한 API의 시대에서 발생하는 또 다른 제한은 제한된 다중 스레드 지원으로 CPU 측면에서 병목 현상을 초래할 수 있습니다.
+
+{vk}은 현대 그래픽 아키텍처를 위해 처음부터 설계되어 이러한 문제를 해결합니다. 프로그래머가 보다 상세한 API를 사용하여 의도를 명확하게 지정할 수 있도록 하여 드라이버 오버헤드를 줄이고, 여러 스레드가 병렬로 명령을 생성하고 제출할 수 있도록 합니다. 단일 컴파일러로 표준화된 바이트 코드 형식으로 전환하여 셰이더 컴파일의 불일치를 줄입니다. 마지막으로 그래픽과 컴퓨팅 기능을 단일 API로 통합하여 현대 그래픽 카드의 범용 처리 기능을 인정합니다.
+
+== 삼각형을 그리기 위해 필요한 것
+
+이제 잘 행동하는 {vk} 프로그램에서 삼각형을 렌더링하는 데 필요한 모든 단계에 대한 개요를 살펴보겠습니다. 여기에 소개 된 모든 개념은 다음 장에서 자세히 설명 될 것입니다. 이것은 모든 개별 구성 요소를 관련시키는 큰 그림을 제공하기 위한 것입니다.
+
+=== Step 1 - 인스턴스 및 물리적 장치 선택 (Instance and physical device selection)
+
+{vk} 응용 프로그램은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkInstance.html[``VkInstance``]를 통해 {vk} API를 설정하는 것으로 시작됩니다. 인스턴스는 응용 프로그램 및 사용 중인 API 확장을 설명하여 생성됩니다. 인스턴스는 응용 프로그램 및 사용 중인 API 확장을 설명하여 생성됩니다. 인스턴스는 애플리케이션 및 사용할 API 확장을 설명하여 생성됩니다. 스턴스를 만든 후 {vk} 지원 하드웨어에 대해 쿼리하고 작업에 사용할 하나 이상의 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDevice.html[``VkPhysicalDevices``]를 선택할 수 있습니다. 예를 들어 전용 그래픽 카드를 사용하여 선호하는 VRAM 크기 및 장치 기능과 같은 속성을 쿼리할 수 있습니다.
+
+=== Step 2 - 논리적 장치 및 큐대기열 (Logical device and queue families)
+
+사용할 올바른 하드웨어 장치를 선택한 후 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDevice.html[``VkDevice``] (논리 장치)를 만들어야합니다. 여기서 다중 뷰포트 렌더링 및 64 비트 플로트와 같이 사용할 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceFeatures.html[``VkPhysicalDeviceFeatures``]를보다 구체적으로 설명합니다. 또한 사용하려는 대기열 가족을 지정해야 합니다. 그리기 명령 및 메모리 작업과 같이 {vk}으로 수행되는 대부분의 작업은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueue.html[``VkQueue``]에 제출하여 비동기적으로 실행됩니다. 대기열은 대기열 가족에서 할당되며 각 대기열 가족은 대기열에서 특정 작업 집합을 지원합니다. 예를 들어 그래픽, 컴퓨팅 및 메모리 전송 작업에 대해 별도의 대기열 패밀리가 있을 수 있습니다. 대기열 제품군의 가용성은 물리적 장치 선택에서 구별 요인으로 사용될 수도 있습니다. {vk} 지원 장치가 그래픽 기능을 제공하지 않는 것은 가능하지만 오늘날 {vk} 지원 기능이있는 모든 그래픽 카드는 일반적으로 우리가 관심있는 모든 대기열 작업을 지원합니다.
+
+=== Step 3 - 창 표면 및 스왑 체인 (Window surface and swap chain)
+
+오프 스크린 렌더링에만 관심이 없다면 렌더링 된 이미지를 표시하려면 창을 만들어야합니다. Windows는 기본 플랫폼 API 또는 link:http://www.glfw.org/[GLFW] 및 link:https://www.libsdl.org/[SDL]과 같은 라이브러리로 만들 수 있습니다. 이 튜토리얼에서 GLFW를 사용하지만 다음 장에서는 이에 대해 자세히 설명합니다.
+
+NOTE: 여기서는 GLFW를 이용한 소스 기반으로 SDL로 구현 예정
+
+우리는 창(Window)으로 실제로 렌더링하기 위해 두 가지 구성 요소가 더 필요합니다 : 창 표면 (``VkSurfaceKHR``)과 스왑 체인 (``VkSwapchainKHR``). ``KHR`` 접미사는 이러한 개체가 {vk} 확장의 일부임을 의미합니다. {vk} API 자체는 완전히 플랫폼 독립적이므로 표준화 된 WSI (Window System Interface) 확장을 사용하여 창 관리자와 상호 작용해야합니다. 표면은 Windows에서 렌더링할 수 있는 플랫폼 간 추상화이며 일반적으로 Windows의 ``HWND``와 같은 기본 창 핸들에 대한 참조를 제공하여 인스턴스화됩니다. 다행히도 GLFW 라이브러리에는 플랫폼의 특정 세부 정보를 처리 할 수있는 기능이 내장되어 있습니다.
+
+스왑 체인(Swapchain)은 렌더 타겟의 집합체입니다. 기본 목적은 현재 우리가 렌더링하는 이미지가 현재 화면에 있는 이미지와 다르다는 것을 확인하는 것입니다. 이것은 완전한 이미지 만 표시되도록하는 것이 중요합니다. 프레임을 그릴 때마다 스왑 체인에 렌더링 할 이미지를 제공하도록 요청해야합니다. 프레임 그리기를 완료하면 이미지가 스왑 체인으로 반환되어 어느 시점에서 화면에 표시됩니다. 완성 된 이미지를 화면에 표시하기위한 렌더링 대상 및 조건의 수는 현재 모드에 따라 다릅니다. 일반적인 현재 모드는 이중 버퍼링(vsync) 및 삼중 버퍼링입니다. 스왑 체인 생성 장에서 살펴볼 것입니다.
+
+일부 플랫폼을 사용하면 VK_KHR_display 및 VK_KHR_display_swapchain 확장을 통해 창 관리자와 상호 작용하지 않고 디스플레이로 직접 렌더링할 수 있습니다. 이를 통해 전체 화면을 나타내는 표면을 만들 수 있으며 예를 들어 자신의 창 관리자를 구현하는 데 사용할 수 있습니다.
+
+=== Step 4 - 이미지 뷰 및 프레임버퍼 (Image views and framebuffers)
+
+스왑 체인에서 획득한 이미지로 그리려면 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageView.html[``VkImageView``] 및 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFramebuffer.html[``VkFramebuffer``]로 포장해야 합니다. 이미지 뷰는 사용할 이미지의 특정 부분을 참조하며, 프레임버퍼는 색상, 깊이 및 스텐실 대상에 사용되는 이미지 뷰를 참조합니다. 스왑 체인에는 다양한 이미지가 있을 수 있기 때문에 각각에 대한 이미지 뷰와 프레임 버퍼를 선제적으로 만들고 추첨 시간에 올바른 이미지를 선택합니다.
+
+=== Step 5 - 렌더 패스 (Render passes)
+
+{vk}의 Render 패스는 렌더링 작업 중에 사용되는 이미지 유형, 사용 방법 및 해당 내용을 처리해야 하는 방법에 대해 설명합니다. 초기 삼각형 렌더링 응용 프로그램에서 {vk}에 단일 이미지를 색상 대상으로 사용하고 도면 작업 직전에 단색으로 지워지기를 원한다고 말할 것입니다. 렌더링 패스는 이미지 유형만 설명하지만 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFramebuffer.html[``VkFramebuffer``]는 실제로 이러한 슬롯에 특정 이미지를 바인딩합니다.
+
+=== Step 6 - {gpl} (Graphics pipeline)
+
+{vk}의 {gpl}은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipeline.html[``VkPipeline``] 개체를 생성하여 설정됩니다. 뷰포트 크기 및 깊이 버퍼 작동 및 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkShaderModule.html[``VkShaderModule``] 개체를 사용하는 프로그래밍 가능한 상태와 같은 그래픽 카드의 구성 가능한 상태를 설명합니다. link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkShaderModule.html[``VkShaderModule``] 개체는 셰이더 바이트 코드에서 생성됩니다. 드라이버는 또한 렌더링 패스를 참조하여 지정한 파이프라인에서 어떤 렌더링 대상이 사용될지 알아야 합니다.
+
+[NOTE]
+.VkImageType
+====
+[source,cpp,linenums]
+----
+typedef enum VkImageType {
+    VK_IMAGE_TYPE_1D = 0,  // specification a one-dimensional image
+    VK_IMAGE_TYPE_2D = 1,  // specification a two-dimensional image
+    VK_IMAGE_TYPE_3D = 2,  // specification a three-dimensional image
+} VkImageType;
+----
+
+.적용예제
+[source,cpp,linenums]
+----
+VkImageCreateInfo info{
+    .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+    .pNext = nullptr,
+    .imageType = VK_IMAGE_TYPE_2D,
+};
+----
+====
+
+기존 API에 비해 {vk}의 가장 독특한 기능 중 하나는 {gpl}의 거의 모든 구성을 미리 설정해야 한다는 것입니다. 즉, 다른 셰이더로 전환하거나 정점 레이아웃을 약간 변경하려면 {gpl}을 완전히 다시 만들어야 합니다. 즉, 렌더링 작업에 필요한 모든 다른 조합에 대해 많은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipeline.html[``VkPipeline``] 개체를 미리 만들어야 합니다. 뷰포트 크기 및 선명한 색상과 같은 일부 기본 구성만 동적으로 변경할 수 있습니다. 모든 상태는 또한 명시적으로 설명되어야 합니다. 예를 들어 기본 색상 블렌드 상태가 없습니다.
+
+좋은 소식은 사전 편집과 시간별 편집에 해당하기 때문에 드라이버에 대한 더 많은 최적화 기회가 있으며 런타임 성능이 더 예측 가능하다는 것입니다. 다른 {gpl}으로 전환하는 것과 같은 큰 상태 변경이 매우 명시적이기 때문입니다.
+
+=== Step 7 - 명령 풀과 명령 버퍼 (Command pools and command buffers)
+
+TIP: ##{cmdpool}##, ##{cmdbff}##로 통일
+
+앞서 언급했듯이 그리기 작업과 같이 실행하려는 {vk}의 많은 작업은 대기열에 제출해야 합니다. 이러한 작업은 먼저 제출되기 전에 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkCommandBuffer.html[``VkCommandBuffer``]에 기록되어야합니다. 이러한 {cmdbff}는 특정 큐 제품군과 연결된 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkCommandPool.html[``VkCommandPool``]에서 할당됩니다. 간단한 삼각형을 그리려면 다음 연산으로 {cmdbff}를 기록해야 합니다.
+
+* 렌더 패스 시작
+* {gpl} 바인딩
+* 그리기 3 꼭지점
+* 렌더 패스 종료
+
+{framebff}의 이미지는 스왑 체인이 우리에게 제공하는 특정 이미지에 따라 달라지기 때문에 가능한 각 이미지에 대한 명령 버퍼를 기록하고 draw 시간에 올바른 이미지를 선택해야합니다. 대안은 모든 프레임마다 명령 버퍼를 다시 기록하는 것입니다. 효율적이지 않습니다.
+
+=== Step 8 - 메인루프 (Main loop)
+
+이제 그리기 명령이 명령 버퍼에 싸여 있으므로 {mainloop}는 매우 간단합니다. 우리는 먼저 ``vkAcquireNextImageKHR``로 {swapchain}에서 이미지를 얻습니다. 그런 다음 해당 이미지에 대한 적절한 {cmdbff}를 선택하고 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueSubmit.html[``vkQueueSubmit``]으로 실행할 수 있습니다. 마지막으로, 이미지를 {swapchain}으로 보내 ``vkQueuePresentKHR``로 화면에 프레젠테이션합니다.
+
+대기열에 제출된 작업은 비동기적으로 실행됩니다. 따라서 우리는 정확한 실행 순서를 보장하기 위해 {smph}와 같은 동기화 개체를 사용해야합니다. 그리기 명령 버퍼의 실행은 이미지 획득이 완료될 때까지 기다리도록 설정되어야 합니다. 그렇지 않으면 화면에서 프레젠테이션을 위해 여전히 읽히는 이미지로 렌더링하기 시작할 수 있습니다. ``vkQueuePresentKHR`` 통화는 렌더링이 완료될 때까지 기다려야 하며, 이를 위해 렌더링이 완료된 후 신호를 보내는 두 번째 {smph}를 사용합니다.
+
+=== 요약 (Summary)
+
+지금까지 정신없이 진행된 튜토리얼은 첫 번째 삼각형을 그리기 위해 앞으로의 작업에 대한 기본적인 이해를 제공하기 위함입니다. 실제 프로그램에는 {vertexbff} 할당, {uniformbff} 생성 및 후속 챕터에서 다룰 텍스처 이미지 업로드와 같은 더 많은 단계가 포함되어 있지만 {vk}은 가파른 학습 곡선을 충분히 가지고 있기 때문에 간단하게 시작할 것입니다. 처음에는 {vertexbff}를 사용하는 대신 {vertexshd}에 꼭짓점 좌표를 삽입하여 약간 속일 것입니다. 그것은 {vertexbff}를 관리하려면 먼저 명령 버퍼에 대한 친숙함이 필요하기 때문입니다.
+
+간단히 말해서, 첫 번째 삼각형을 그리려면 다음이 필요합니다.
+
+1. link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkInstance.html[``VkInstance``] 만들기
+2. 지원되는 그래픽 카드 선택(link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDevice.html[``VkPhysicalDevice``])
+3. 그리기 및 프레젠테이션을 위한 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDevice.html[``VkDevice``] 및 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueue.html[``VkQueue``] 만들기
+4. window, window surface 및 {swapchain} 만들기
+5. {swapchain} 이미지를 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageView.html[``VkImageView``]로 {wrapping}
+6. 렌더링 대상 및 사용량을 지정하는 {renderpass} 만들기
+7. {renderpass}에 대한 {framebff} 만들기
+8. {gpl} 설정
+9. 가능한 모든 {swapchain} 이미지에 대한 그리기 명령과 함께 {cmdbff} 할당 및 기록
+10. 이미지를 획득하고, 올바른 그리기 {cmdbff}를 제출하고, 이미지를 {swapchain}으로 다시 반환하여 프레임을 그립니다. 
+
+많은 단계이지만 각 개별 단계의 목적은 다가오는 장에서 매우 간단하고 명확해질 것입니다. 전체 프로그램에 비해 단일 단계의 관계에 대해 혼란 스러우면이 장을 다시 참조해야합니다.
+
+== API 컨셉 (API concepts)
+
+이 장은 {vk} API가 더 낮은 수준에서 어떻게 구성되어 있는지에 대한 간략한 개요로 마무리됩니다.
+
+=== 코딩 규칙 (Coding convensions)
+
+{vk} 함수, 열거형 및 구조는 모두 LunarG에서 개발한 link:https://lunarg.com/vulkan-sdk/[{vk} SDK]에 포함된 ``vulkan.h`` 헤더에 정의됩니다. 다음 챕터에 이 SDK를 설치할 것입니다.
+
+함수는 소문자 ``vk`` 접두사로, 열거형 및 구조체(정의)와 같은 유형에는 ``Vk`` 접두사로 그리고 열거형 값은 ``VK_`` 접두사로 시작합니다. API는 함수에 대한 매개 변수를 제공하기 위해 구조를 크게 사용합니다. 예를 들어, 객체 생성은 일반적으로 이 패턴을 따른다:
+
+[source,cpp,linenums]
+----
+VkXXXCreateInfo createInfo{};
+createInfo.sType = VK_STRUCTURE_TYPE_XXX_CREATE_INFO;
+createInfo.pNext = nullptr;
+createInfo.foo = ...;
+createInfo.bar = ...;
+
+VkXXX object;
+if (vkCreateXXX(&createInfo, nullptr, &object) != VK_SUCCESS) {
+    std::cerr << "failed to create object" << std::endl;
+    return false;
+}
+----
+
+[NOTE]
+.예시
+====
+[source,cpp,linenums]
+----
+vkCreateDescriptorPool() // 함수
+VkImageType              // 열거형, 구조체 정의
+VK_IMAGE_TYPE_2D         // 열거형
+----
+====
+
+{vk}의 수많은 구조체는 ``sType``(##e.g. VK_STRUCTURE_TYPE_PRESENT_INFO_KHR##) 멤버의 구조체 유형을 명시적으로 지정해야 합니다. ``pNext`` 멤버는 확장 구조를 가리킬 수 있으며 이 자습서에서는 항상 ``nullptr``입니다. 개체를 만들거나 파괴하는 함수에는 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkAllocationCallbacks.html[``VkAllocationCallbacks``] 매개 변수가 있어 드라이버 메모리에 사용자 지정 할당자를 사용할 수 있으며, 이 자습서에서는 ``nullptr``로 지정하게 됩니다(Functions that create or destroy an object will have a VkAllocationCallbacks parameter that allows you to use a custom allocator for driver memory, which will also be left nullptr in this tutorial).
+
+거의 모든 함수는 ``VK_SUCCESS`` 또는 오류 코드인 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkResult.html[``VkResult``]를 반환합니다. 사양은 각 함수가 반환할 수 있는 오류 코드와 그 의미를 설명합니다.
+
+.``VkResult`` 목록 보기 link:https://docs.vulkan.org/refpages/latest/refpages/source/VkResult.html[출처 : {vk} VkResult(3)]
+[%collapsible]
+====
+[source,cpp,linenums]
+----
+// Provided by VK_VERSION_1_0
+typedef enum VkResult {
+    VK_SUCCESS = 0,
+    VK_NOT_READY = 1,
+    VK_TIMEOUT = 2,
+    VK_EVENT_SET = 3,
+    VK_EVENT_RESET = 4,
+    VK_INCOMPLETE = 5,
+    VK_ERROR_OUT_OF_HOST_MEMORY = -1,
+    VK_ERROR_OUT_OF_DEVICE_MEMORY = -2,
+    VK_ERROR_INITIALIZATION_FAILED = -3,
+    VK_ERROR_DEVICE_LOST = -4,
+    VK_ERROR_MEMORY_MAP_FAILED = -5,
+    VK_ERROR_LAYER_NOT_PRESENT = -6,
+    VK_ERROR_EXTENSION_NOT_PRESENT = -7,
+    VK_ERROR_FEATURE_NOT_PRESENT = -8,
+    VK_ERROR_INCOMPATIBLE_DRIVER = -9,
+    VK_ERROR_TOO_MANY_OBJECTS = -10,
+    VK_ERROR_FORMAT_NOT_SUPPORTED = -11,
+    VK_ERROR_FRAGMENTED_POOL = -12,
+    VK_ERROR_UNKNOWN = -13,
+  // Provided by VK_VERSION_1_0
+    VK_ERROR_VALIDATION_FAILED = -1000011001,
+  // Provided by VK_VERSION_1_1
+    VK_ERROR_OUT_OF_POOL_MEMORY = -1000069000,
+  // Provided by VK_VERSION_1_1
+    VK_ERROR_INVALID_EXTERNAL_HANDLE = -1000072003,
+  // Provided by VK_VERSION_1_2
+    VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS = -1000257000,
+  // Provided by VK_VERSION_1_2
+    VK_ERROR_FRAGMENTATION = -1000161000,
+  // Provided by VK_VERSION_1_3
+    VK_PIPELINE_COMPILE_REQUIRED = 1000297000,
+  // Provided by VK_VERSION_1_4
+    VK_ERROR_NOT_PERMITTED = -1000174001,
+  // Provided by VK_KHR_surface
+    VK_ERROR_SURFACE_LOST_KHR = -1000000000,
+  // Provided by VK_KHR_surface
+    VK_ERROR_NATIVE_WINDOW_IN_USE_KHR = -1000000001,
+  // Provided by VK_KHR_swapchain
+    VK_SUBOPTIMAL_KHR = 1000001003,
+  // Provided by VK_KHR_swapchain
+    VK_ERROR_OUT_OF_DATE_KHR = -1000001004,
+  // Provided by VK_KHR_display_swapchain
+    VK_ERROR_INCOMPATIBLE_DISPLAY_KHR = -1000003001,
+  // Provided by VK_NV_glsl_shader
+    VK_ERROR_INVALID_SHADER_NV = -1000012000,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR = -1000023000,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR = -1000023001,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR = -1000023002,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR = -1000023003,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR = -1000023004,
+  // Provided by VK_KHR_video_queue
+    VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR = -1000023005,
+  // Provided by VK_EXT_image_drm_format_modifier
+    VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT = -1000158000,
+  // Provided by VK_EXT_present_timing
+    VK_ERROR_PRESENT_TIMING_QUEUE_FULL_EXT = -1000208000,
+  // Provided by VK_EXT_full_screen_exclusive
+    VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT = -1000255000,
+  // Provided by VK_KHR_deferred_host_operations
+    VK_THREAD_IDLE_KHR = 1000268000,
+  // Provided by VK_KHR_deferred_host_operations
+    VK_THREAD_DONE_KHR = 1000268001,
+  // Provided by VK_KHR_deferred_host_operations
+    VK_OPERATION_DEFERRED_KHR = 1000268002,
+  // Provided by VK_KHR_deferred_host_operations
+    VK_OPERATION_NOT_DEFERRED_KHR = 1000268003,
+  // Provided by VK_KHR_video_encode_queue
+    VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR = -1000299000,
+  // Provided by VK_EXT_image_compression_control
+    VK_ERROR_COMPRESSION_EXHAUSTED_EXT = -1000338000,
+  // Provided by VK_EXT_shader_object
+    VK_INCOMPATIBLE_SHADER_BINARY_EXT = 1000482000,
+  // Provided by VK_KHR_pipeline_binary
+    VK_PIPELINE_BINARY_MISSING_KHR = 1000483000,
+  // Provided by VK_KHR_pipeline_binary
+    VK_ERROR_NOT_ENOUGH_SPACE_KHR = -1000483000,
+  // Provided by VK_EXT_debug_report
+    VK_ERROR_VALIDATION_FAILED_EXT = VK_ERROR_VALIDATION_FAILED,
+  // Provided by VK_KHR_maintenance1
+    VK_ERROR_OUT_OF_POOL_MEMORY_KHR = VK_ERROR_OUT_OF_POOL_MEMORY,
+  // Provided by VK_KHR_external_memory
+    VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR = VK_ERROR_INVALID_EXTERNAL_HANDLE,
+  // Provided by VK_EXT_descriptor_indexing
+    VK_ERROR_FRAGMENTATION_EXT = VK_ERROR_FRAGMENTATION,
+  // Provided by VK_EXT_global_priority
+    VK_ERROR_NOT_PERMITTED_EXT = VK_ERROR_NOT_PERMITTED,
+  // Provided by VK_KHR_global_priority
+    VK_ERROR_NOT_PERMITTED_KHR = VK_ERROR_NOT_PERMITTED,
+  // Provided by VK_EXT_buffer_device_address
+    VK_ERROR_INVALID_DEVICE_ADDRESS_EXT = VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
+  // Provided by VK_KHR_buffer_device_address
+    VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS_KHR = VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
+  // Provided by VK_EXT_pipeline_creation_cache_control
+    VK_PIPELINE_COMPILE_REQUIRED_EXT = VK_PIPELINE_COMPILE_REQUIRED,
+  // Provided by VK_EXT_pipeline_creation_cache_control
+    VK_ERROR_PIPELINE_COMPILE_REQUIRED_EXT = VK_PIPELINE_COMPILE_REQUIRED,
+  // Provided by VK_EXT_shader_object
+  // VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT is a legacy alias
+    VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT = VK_INCOMPATIBLE_SHADER_BINARY_EXT,
+} VkResult;
+----
+====
+
+=== 검증 레이어 (Validation layers)
+
+앞서 언급했듯이 {vk}은 고성능 및 낮은 드라이버 오버 헤드를 위해 설계되었습니다. 따라서 기본적으로 매우 제한된 오류 확인 및 디버깅 기능이 포함됩니다. 드라이버는 종종 오류 코드를 반환하는 대신 충돌합니다. 잘못하거나 더 나쁜 것은 그래픽 카드에서 작동하고 다른 사람에게 완전히 실패하는 것처럼 보입니다.
+
+{vk}을 사용하면 유효성 검사 계층으로 알려진 기능을 통해 광범위한 검사를 수행할 수 있습니다. 유효성 검사 계층은 API와 그래픽 드라이버 간에 삽입할 수 있는 코드 조각으로 기능 매개변수에 대한 추가 검사를 실행하고 메모리 관리 문제를 추적하는 것과 같은 작업을 수행합니다. 좋은 점은 개발 중에 활성화 한 다음 제로 오버 헤드에 대한 응용 프로그램을 해제 할 때 완전히 비활성화 할 수 있다는 것입니다. 누구나 자신의 유효성 검사 계층을 작성할 수 있지만 LunarG의 {vk} SDK는 이 자습서에서 사용할 유효성 검사 계층의 표준 세트를 제공합니다. 또한 레이어에서 디버그 메시지를 수신하려면 콜백 함수를 등록해야 합니다.
+
+{vk}은 모든 작업에 대해 매우 명시적이며 유효성 검사 계층이 너무 광범위하기 때문에 실제로 OpenGL 및 Direct3D에 비해 화면이 검은색인 이유를 훨씬 쉽게 찾을 수 있습니다!
+
+코드 작성을 시작하기 위해 이제 마지막 한 단계만 남았습니다. 그러면 link:DevelopmentEnvironment.html[개발환경 설정을 진행해 봅시다](There's only one more step before we'll start writing code and that's setting up the development environment).

@@ -1,0 +1,73 @@
+// Define recurring terms as attributes and use them in multiple places throughout the document.
+// Changing the attribute automatically updates all instances.
+
+// Replace "adoc Studio" with different text after :app-name:
+// You will see what we mean.
+
+:app-name: adoc Studio
+:lang: en
+:toc:
+
+= Welcome to {app-name} 👋
+
+*This is the preamble.* Use the first paragraph after the title to briefly introduce your document and welcome the reader.
+
+From the first line break, the text is automatically displayed in a smaller font size.
+
+[quote]
+*{app-name}* brings AsciiDoc to Mac, iPad, and iPhone. Great that you're here. In this document, we will show you the basics so that you can get started immediately.
+
+image::https://www.adoc-studio.app/cover_en.png[width=800, align=center]
+---
+
+== Why the Division into two Areas?
+
+Markup languages like AsciiDoc rely on a clear separation of content and presentation. This is also the case in *{app-name}*. You write in the editor on the left, and the text is rendered as HTML or PDF in the preview on the right. This has several advantages:
+
+* *Efficiency*: Adjust content quickly without manually reworking every formatting detail.
+* *Consistency*: Design changes automatically and uniformly affects the entire document.
+* *Flexibility*: The same content can easily be output in various formats (e.g., PDF, HTML).
+
+image::https://www.adoc-studio.app/styles.png[width=300, float=right]
+
+Take a look at this document in a different style. To do so, click on the arrow next to the eye icon in the top right. Our preview settings let you change e.g. the style or format of your document.
+
+---
+
+== Excellent Markups
+
+AsciiDoc uses so-called _markup_ that encloses your text to emphasize content. Format text, for instance, in *bold* or _italic_.
+
+.Here are a few more markups:
+
+[grid=all, frame=none, stripes=even]
+|===
+|Command  |Keyboard Shortcut | Markup | Result
+
+|Bold | kbd:[⌘+B] | \*bold* | *bold*
+|Italic | kbd:[⌘+I] | \_italic_ | _Italic_
+|Highlighted | kbd:[⌘+#] | \#highlighted# | #highlighted#
+|Underlined | kbd:[⌘+U] | [.underline]\#underlined# | [.underline]#underlined#
+|===
+
+:icons: font
+
+// The attribute :icons: in AsciiDoc changes how admonitions like TIP: are displayed. Using :icons: font, you replace the text ("Tip") with a Font Awesome icon.
+
+TIP: You can find more markups in the user manual. Just browse through it under menu:Help[User Manual].
+
+image::https://www.adoc-studio.app/adoc-coach_en.png[width=300, float=right]
+
+== Easily Learned, Thanks to the Coach
+
+Try pressing the kbd:[ESC] key. This opens the syntax help, our so-called https://www.adoc-studio.app/blog/adoc-coach[*adoc Coach*].
+
+Like a real coach, it gives you tips exactly when you need them. Type "image" and wait a moment – the coach will list all suitable options directly for the respective text location.
+
+
+---
+
+== Any Questions?
+
+*{app-name}* can do a lot more. Feel free to browse our https://www.adoc-studio.app/learn[Learning Path] for more.
+Do you have further questions? Write us in our http://forum.adoc-studio.app/[Forum] and we will help you.

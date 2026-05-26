@@ -1,0 +1,50 @@
+:vk: Vulkan
+:gpl: 그래픽 파이프라인(graphics pipeline)
+:cmdpool: 커맨드풀(command pool)
+:cmdbff: 커맨드버퍼(command buffer)
+:framebff: 프레임버퍼(frame buffer)
+:mainloop: 메인루프(main loop)
+:swapchain: 스왑체인(swap chain)
+:smph: 세마포어(semaphore)
+:vertexbff: 정점버퍼(vertex buffer)
+:vertexshd: 정점세이터(vertex shader)
+:uniformbff: 균일버퍼(uniform buffer)
+:renderpass: 렌더패스(render pass)
+:wrapping: 포장(wrapping)
+:bytecode: 바이트코드
+:shdmdl: 셰이더모듈(shader module)
+:vs: 비주얼 스튜디오(Visual studio)
+:queuef: 큐패밀리(Quene families)
+:queue: 큐(대기열 / Queue)
+:surface: 표면(surface)
+:windowSurface: 창 표면(window surface)
+:windowSystem: 창 시스템(window system)
+:presentation: 프리젠테이션
+:presentationF: 프리젠테이션 패밀리(present family)
+:presentationQ: 프리젠테이션 큐(presentation queue)
+:swchain: 스왑체인(swap chains)
+:surface: 표면(surface)
+:swextent: 스왑 범위(swap extent)
+:cubmap: 큐브맵(cube maps)
+:vkCreateInstance: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateInstance.html
+:vkDestroyInstance: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkDestroyInstance.html
+:VkInstance: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkInstance.html
+:VkResult: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkResult.html
+:VkInstanceCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkInstanceCreateInfo.html
+:vkEnumerateInstanceExtensionProperties: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkEnumerateInstanceExtensionProperties.html
+:VkExtensionProperties: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkExtensionProperties.html
+:VkPhysicalDevice: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDevice.html
+:vkGetPhysicalDeviceProperties: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetPhysicalDeviceProperties.html
+:vkGetPhysicalDeviceFeatures: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetPhysicalDeviceFeatures.html
+:vkGetPhysicalDeviceQueueFamilyProperties: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetPhysicalDeviceQueueFamilyProperties.html
+:VkQueueFamilyProperties: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
+:VkDeviceQueueCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDeviceQueueCreateInfo.html
+:VkDeviceCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDeviceCreateInfo.html
+:vkCreateDevice: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateDevice.html
+:vkDestroyDevice: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkDestroyDevice.html
+:vkGetDeviceQueue: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetDeviceQueue.html
+:VkQueue: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueue.html
+:VkImage: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImage.html
+:VkImageView: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageView.html
+:VkImageViewCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageViewCreateInfo.html
+:vkCreateImageView: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateImageView.html

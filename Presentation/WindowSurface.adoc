@@ -1,0 +1,614 @@
+= Window surface
+include::../common/header.adoc[]
+:imagesdir!:
+
+{vk}은 플랫폼 독립적인 API이므로 자체적으로 창 시스템과 직접 인터페이스 할 수 없습니다. {vk}과 창 시스템 사이의 연결을 설정하여 결과를 화면에 표시하려면 WSI (Window System Integration) 확장 프로그램을 사용해야합니다. 이 장에서는 ``VK_KHR_surface``인 첫 번째 장에 대해 논의할 것입니다. ``VkSurfaceKHR``는 렌더링된 이미지를 표시하기 위해 추상적인 유형의 {surface}를 나타냅니다. 우리 프로그램의 {surface}는 우리가 이미 GLFW로 열어 놓은 창에 의해 뒷받침 될 것입니다.
+
+``VK_KHR_surface`` 확장 프로그램은 인스턴스 레벨 확장이며 ``glfwGetRequiredInstanceExtensions``에 의해 반환된 목록에 포함되어 있기 때문에 실제로 이미 활성화했습니다. 목록에는 다음 몇 장에서 사용할 다른 WSI 확장 프로그램도 포함되어 있습니다.
+
+Window surface는 인스턴스 생성 직후에 생성되어야 합니다. 물리적 장치 선택에 실제로 영향을 미칠 수 있기 때문입니다. 우리가 이것을 연기 한 이유는 {windowSurface}가 렌더링 대상 및 {presentation}의 더 큰 주제의 일부이기 때문에 설명이 기본 설정을 어지럽히기 때문입니다. 또한 화면 밖 렌더링이 필요한 경우 {windowSurface}가 {vk}에서 완전히 선택적인 구성 요소라는 점에 유의해야 합니다. {vk}을 사용하면 보이지 않는 창을 만드는 것과 같은 해킹없이 ( OpenGL에 필요)(__The window surface needs to be created right after the instance creation, because it can actually influence the physical device selection. The reason we postponed this is because window surfaces are part of the larger topic of render targets and presentation for which the explanation would have cluttered the basic setup. It should also be noted that window surfaces are an entirely optional component in Vulkan, if you just need off-screen rendering. Vulkan allows you to do that without hacks like creating an invisible window (necessary for OpenGL)__).
+
+== Window surface 생성 (Window surface creation)
+
+디버그 콜백 바로 아래에 ``Surface`` 클래스 멤버를 추가하여 시작합니다.
+
+[source,cpp]
+----
+VkSurfaceKHR _surface;
+----
+
+``VkSurfaceKHR`` 개체와 그 사용은 플랫폼 독립적이지만 창 시스템 세부 사항에 따라 달라지기 때문이 아닙니다. 예를 들어 Windows에서 ``HWND`` 및 ``HMODULE`` 핸들이 필요합니다. 따라서 확장 프로그램에는 플랫폼별 추가 기능이 있으며 Windows에서는 ``VK_KHR_win32_surface``라고 하며 ``glfwGetRequiredInstanceExtensions``의 목록에 자동으로 포함됩니다.
+
+이 플랫폼 특정 확장 프로그램이 Windows에서 {surface}를 만드는 데 어떻게 사용될 수 있는지 보여 주지만이 튜토리얼에서는 실제로 사용하지 않습니다. GLFW와 같은 라이브러리를 사용한 다음 어쨌든 플랫폼별 코드를 사용하는 것은 의미가 없습니다. GLFW에는 실제로 우리를 위한 플랫폼 다름을 취급하는 ``glfwCreateWindowSurface``가 있습니다. 그럼에도 불구하고, 우리가 그것에 의존하기 시작하기 전에 무대 뒤에서 그것이 무엇을하는지 보는 것이 좋습니다.
+
+네이티브 플랫폼 기능에 액세스하려면 상단에 포함된 내용을 업데이트해야 합니다.
+
+[source,cpp]
+----
+#define VK_USE_PLATFORM_WIN32_KHR
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+----
+
+Window surface는 {vk} 개체이기 때문에 채워야 하는 ``VkWin32SurfaceCreateInfoKHR`` 구조가 함께 제공됩니다. 그것에는 2개의 중요한 모수가 있습니다. ``hwnd``와 ``hinstance``. 창과 프로세스의 핸들입니다.
+
+[source,cpp]
+----
+VkWin32SurfaceCretaeInfoKHR createInfo{
+    .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+    .hwnd = glfwGetWin32Window(_window),
+    .createInfo.hinstance = GetModuleHandle(nullptr),
+};
+----
+
+``glfwGetWin32Window`` 함수는 GLFW 창 개체에서 원시 ``HWND``를 얻는 데 사용됩니다. ``GetModuleHandle`` 통화는 현재 프로세스의 ``HINSTANCE`` 핸들을 반환합니다.
+
+그 후 {surface}는 ``vkCreateWin32SurfaceKHR``로 만들 수 있으며, 여기에는 인스턴스의 매개 변수, {surface} 생성 세부 정보, 사용자 지정 할당자 및 {surface} 핸들이 저장될 변수가 포함됩니다. 기술적으로 이것은 WSI 확장 함수이지만 표준 {vk} 로더가 포함되도록 일반적으로 사용되므로 다른 확장과 달리 명시적으로 로드할 필요가 없습니다.
+
+[source,cpp]
+----
+if (vkCreateWin32SurfaceKHR(_instance, &createInfo, nullptr, &_surface) == VK_SUCCESS) {
+    throw std::runtime_error("failed to create window surface!");
+}
+----
+
+이 프로세스는 Linux와 같은 다른 플랫폼과 유사하며 ``vkCreateXcBSurfaceKHR``은 X11의 생성 세부 정보로 XCB 연결 및 창을 사용합니다.
+
+``glfwCreateWindowSurface`` 함수는 각 플랫폼에 대해 다른 구현으로 이 작업을 정확히 수행합니다. 이제 우리 프로그램에 통합 할 것입니다. createarEnable create를 add a function create to be called from initVulkan right after instance creation and setupDebugMessenger(__The glfwCreateWindowSurface function performs exactly this operation with a different implementation for each platform. We'll now integrate it into our program. Add a function createSurface to be called from initVulkan right after instance creation and setupDebugMessenger.__).
+
+[source,cpp]
+----
+void initVulkan() {
+    createInstance();
+    setupDebugMessenger();
+    createSurface();
+    pickPhysicalDevice();
+    createLogicalDevice();
+}
+
+void createSurface();
+----
+
+GLFW 호출은 함수의 구현을 매우 간단하게 만드는 구조체 대신 간단한 매개 변수를 취합니다.
+
+[source,cpp]
+----
+void createSurface() {
+    if (glfwCreateWindowSurface(_instance, _window, nullptr, &_surface) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create window surface!");
+    }
+}
+----
+
+매개 변수는 {VkInstance}[``VkInstance``], GLFW 창 포인터, 사용자 정의 할당자 및 ``VkSurfaceKHR`` 변수에 대한 포인터입니다. 그것은 단순히 관련 플랫폼 호출에서 {VkResult}[``VkResult``]를 통과합니다. GLFW는 {surface}를 파괴하기위한 특별한 기능을 제공하지 않지만 원래 API를 통해 쉽게 수행 할 수 있습니다.
+
+[source,cpp]
+----
+void cleanup() {
+    ...
+    vkDestroySurfaceKHR(_instance, _surface, nullptr);
+    vkDestroyInstance(_instance, nullptr);
+    ...
+}
+----
+인스턴스 전에 {WindowSurface}가 파괴되었는지 확인합니다.
+
+== 프레젠테이션 지원 문의 (Querying for presentation support)
+
+{vk} 구현은 창 시스템 통합을 지원할 수 있지만 시스템의 모든 장치가 이를 지원한다는 의미는 아닙니다. 따라서 장치가 우리가 만든 {surface}에 이미지를 제시 할 수 있도록 ``isDeviceSuitable``을 확장해야합니다. 프레젠테이션은 대기열별 기능이기 때문에 문제는 실제로 우리가 만든 {surface}에 프레젠테이션을 지원하는 {queuef}를 찾는 것입니다.
+
+실제로 그리기 명령을 지원하는 {queuef}과 프레젠테이션을 지원하는 {queuef}이 겹치지 않을 가능성이 있습니다. 따라서 ``QueueFamilyIndices`` 구조를 수정하여 뚜렷한 프레젠테이션 {queue}가 있을 수 있다는 점을 고려해야 합니다.
+
+[source,cpp]
+----
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
+
+    bool isComplete() {
+        return graphicsFamily.has_value() && presentFamily.has_value();
+    }
+}
+----
+
+다음으로 ``findQueueFamilies`` 기능을 수정하여 {windowSurface}에 제시할 수 있는 {queue}를 찾습니다. 이를 확인하는 기능은 물리적 장치, {queuef} 지수 및 {surface}를 매개 변수로 사용하는 ``vkGetPhysicalDeviceSurfaceSupportKHR``입니다. ``VK_QUEUE_GRAPHICS_BIT``와 동일한 루프에서 호출을 추가합니다.
+
+[source,cpp]
+----
+VkBool32 presentSupport = false;
+vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface, &presentSupport);
+----
+
+그런 다음 부울의 값을 확인하고 {presentationF} {queue} 인덱스를 저장하십시오.
+
+[source,cpp]
+----
+if (presentSupport) {
+    indices.presentFamily = 1;
+}
+----
+
+결국 이것들은 결국 동일한 {queueF}가 될 가능성이 매우 높지만 프로그램 전체에서 우리는 그것들을 균일한 접근 방식을 위한 별도의 {queue} 인 것처럼 취급 할 것입니다. 그럼에도 불구하고, 당신은 명시적으로 향상된 성능을 위해 동일한 {queue}에서 그리기 및 {presentation}을 지원하는 물리적 장치를 선호하는 논리를 추가 할 수 있습니다.
+
+== 프레젠테이션 대기열 만들기 (Creating the presentation queue)
+
+남은 한 가지는 논리적 장치 생성 절차를 수정하여 {presentationQ}를 만들고 {VkQueue}[``VkQueue``] 핸들을 검색하는 것입니다. 핸들에 대한 멤버 변수를 추가합니다.
+
+[source,cpp]
+----
+VkQueue _presentQueue;
+----
+
+다음으로, 우리는 ##두 가족## 모두에서 대기열을 만들기 위해 여러 {VkDeviceQueueCreateInfo}[``VkDeviceQueueCreateInfo``]가 필요합니다(__Next, we need to have multiple VkDeviceQueueCreateInfo structs to create a queue from both families__). 이를 위한 우아한 방법은 필요한 {queue}에 필요한 모든 고유한 {queueF} 세트를 만드는 것입니다.
+
+[source,cpp]
+----
+#include <set>
+...
+QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+
+std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+
+float queuePriority = 1.0f;
+
+for (uint32_t queueFamily: uniqueQueueFamilies) {
+    VkDeviceQueueCreateInfo queueCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queueFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+
+    queueCreateInfos.push_back(queueCreateInfo);
+}
+----
+
+벡터를 가리키도록 {VkDeviceCreateInfo}[``VkDeviceCreateInfo``]를 수정합니다.
+
+[source,cpp]
+----
+VkDeviceCreateInfo createInfo{
+    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+    .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+    .pQueueCreateInfos = queueCreateInfos.data(),
+    .enabledExtensionCount = 0,
+    .pEnabledFeatures = &deviceFeatures,
+};
+----
+
+{queueF}가 동일하다면 한 번만 ##지수를 통과하면됩니다##(__If the queue families are the same, then we only need to pass its index once__). 마지막으로 {queue} 핸들을 검색하려면 호출을 추가합니다.
+
+[source,cpp]
+----
+vkGetDeviceQueue(_device, indices.presentFamily.value(), 0, &presentQueue);
+----
+
+{queueF}가 동일한 경우 두 핸들은 현재 동일한 값을 갖습니다. link:./Swapchain.html[다음 장]에서 우리는 {swchain}과 그들이 우리에게 {surface}에 이미지를 제시 할 수있는 기능을 제공하는 방법을 살펴볼 것입니다.
+
+.작성자 버전의 전체 소스
+[%collapsible]
+====
+[source,cpp,linenums]
+----
+//
+// Created by JoonHo Son on 2026-05-17.
+//
+#include <vulkan/vulkan.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <vector>
+
+#include "vulkan/vulkan_core.h"
+
+#if !defined(NDEBUG) || defined(_DEBUG)
+#define DEBUG_BUILD
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#else
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
+#endif
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
+
+const uint32_t WIDTH = 800;
+const uint32_t HEIGHT = 600;
+
+const std::vector<const char*> validationLayers{
+    "VK_LAYER_KHRONOS_validation",
+};
+
+#ifdef DEBUG_BUILD
+const bool enableValidationLayers = true;
+#else
+const bool enableValidationLayers = false;
+#endif
+
+VkResult CreateDebugUtilsMessengerEXT(
+    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkCreateDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                   VkDebugUtilsMessengerEXT debugMessenger,
+                                   const VkAllocationCallbacks* pAllocator) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkDestroyDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+    std::optional<uint32_t> presentFamily;
+
+    bool isComplete() {
+        return graphicsFamily.has_value() && presentFamily.has_value();
+    }
+};
+
+class HelloTriangleApplication {
+public:
+    void run() {
+        initWindow();
+        initVulkan();
+        mainLoop();
+        cleanup();
+    }
+
+private:
+    GLFWwindow* _window;
+
+    VkInstance _instance;
+
+    VkDebugUtilsMessengerEXT _debugMessenger;
+
+    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+
+    VkDevice _device;
+
+    VkQueue _graphicsQueue;
+
+    VkQueue _presentQueue;
+
+    VkSurfaceKHR _surface;
+
+    void initWindow() {
+        glfwInit();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        _window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    }
+
+    void initVulkan() {
+        createInstance();
+        setupDebugMessenger();
+        createSurface();
+        pickPhysicalDevice();
+        createLogicalDevice();
+    }
+
+    void mainLoop() {
+        while (!glfwWindowShouldClose(_window)) {
+            glfwPollEvents();
+        }
+    }
+
+    void cleanup() {
+        vkDestroyDevice(_device, nullptr);
+
+        if (enableValidationLayers) {
+            DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+        }
+
+        vkDestroySurfaceKHR(_instance, _surface, nullptr);
+        vkDestroyInstance(_instance, nullptr);
+        glfwDestroyWindow(_window);
+        glfwTerminate();
+    }
+
+    void createInstance() {
+        if (enableValidationLayers && !checkValidationLayerSupport()) {
+            throw std::runtime_error(
+                "validation layers requested, but not available!");
+        }
+
+        VkApplicationInfo appInfo{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "Hello Triangle",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_0,
+        };
+
+        auto extensions = getRequiredExtensions();
+
+        VkInstanceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &appInfo,
+            .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+            .ppEnabledExtensionNames = extensions.data(),
+        };
+
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount =
+                static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+
+            populateDebugMessengerCreateInfo(debugCreateInfo);
+            createInfo.pNext =
+                (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+        } else {
+            createInfo.enabledLayerCount = 0;
+            createInfo.pNext = nullptr;
+        }
+
+        if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
+            SPDLOG_ERROR("----------------------------------------");
+            SPDLOG_ERROR("failed to create instance!");
+            SPDLOG_ERROR("----------------------------------------");
+
+            throw std::runtime_error("failed to create instance!");
+        }
+
+        for (const auto& extension : extensions) {
+            SPDLOG_DEBUG("\t {}", extension);
+        }
+    }
+
+    void populateDebugMessengerCreateInfo(
+        VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+        createInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = debugCallback,
+        };
+    }
+
+    void setupDebugMessenger() {
+        if (!enableValidationLayers) {
+            return;
+        }
+
+        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+
+        populateDebugMessengerCreateInfo(createInfo);
+
+        if (CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr,
+                                         &_debugMessenger) != VK_SUCCESS) {
+            throw std::runtime_error("failed to set up debug messenger!");
+        }
+    }
+
+    void createSurface() {
+        if (glfwCreateWindowSurface(_instance, _window, nullptr, &_surface) !=
+            VK_SUCCESS) {
+            throw std::runtime_error("failed to create window surface!");
+        }
+    }
+
+    void pickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+        if (deviceCount == 0) {
+            SPDLOG_ERROR("Vulkan을 지원하는 GPU를 찾을 수 없음.");
+
+            throw std::runtime_error(
+                "failed to find GPUs with Vulkan support!");
+        }
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            if (isDeviceSuitable(device)) {
+                _physicalDevice = device;
+
+                break;
+            }
+        }
+
+        if (_physicalDevice == VK_NULL_HANDLE) {
+            SPDLOG_ERROR("사용 가능한 GPU를 찾지 못함");
+
+            throw std::runtime_error("failed to find a suitable GPU!");
+        }
+    }
+
+    void createLogicalDevice() {
+        QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::set<uint32_t> uniqueQueueFamilies = {
+            indices.graphicsFamily.value(),
+            indices.presentFamily.value(),
+        };
+        float queuePriority = 1.0f;
+
+        for (uint32_t queueFamily : uniqueQueueFamilies) {
+            VkDeviceQueueCreateInfo queueCreateInfo{
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = queueFamily,
+                .queueCount = 1,
+                .pQueuePriorities = &queuePriority,
+            };
+
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
+
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        VkDeviceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .queueCreateInfoCount =
+                static_cast<uint32_t>(queueCreateInfos.size()),
+            .pQueueCreateInfos = queueCreateInfos.data(),
+            .enabledExtensionCount = 0,
+            .pEnabledFeatures = &deviceFeatures,
+        };
+
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount =
+                static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+        } else {
+            createInfo.enabledLayerCount = 0;
+        }
+
+        if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) !=
+            VK_SUCCESS) {
+            throw std::runtime_error("failed to create logical device!");
+        }
+
+        vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0,
+                         &_graphicsQueue);
+        vkGetDeviceQueue(_device, indices.presentFamily.value(), 0,
+                         &_presentQueue);
+    }
+
+    bool isDeviceSuitable(VkPhysicalDevice device) {
+        QueueFamilyIndices indices = findQueueFamilies(device);
+
+        return indices.isComplete();
+    }
+
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices;
+        uint32_t queueFamilyCount = 0;
+
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                                 nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                                 queueFamilies.data());
+
+        for (uint32_t i = 0; i < queueFamilies.size(); i++) {
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = 1;
+            }
+
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface,
+                                                 &presentSupport);
+
+            if (presentSupport) {
+                indices.presentFamily = 1;
+            }
+
+            if (indices.isComplete()) {
+                break;
+            }
+        }
+
+        return indices;
+    }
+
+    std::vector<const char*> getRequiredExtensions() {
+        uint32_t glfwExtensionCount = 0;
+        const char** glfwExtensions;
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+        std::vector<const char*> extensions(
+            glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+        if (enableValidationLayers) {
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+
+        return extensions;
+    }
+
+    bool checkValidationLayerSupport() {
+        uint32_t layerCount;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        for (const char* layerName : validationLayers) {
+            bool layerFound = false;
+
+            for (const auto& layerProperties : availableLayers) {
+                SPDLOG_DEBUG("----------------------------------------------");
+                SPDLOG_DEBUG("layerName : {}", layerName);
+                SPDLOG_DEBUG("property's name : {}", layerProperties.layerName);
+
+                if (strcmp(layerName, layerProperties.layerName) == 0) {
+                    layerFound = true;
+
+                    break;
+                }
+            }
+
+            if (!layerFound) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pcallbackData,
+        [[maybe_unused]] void* pUserData) {
+        SPDLOG_ERROR("validation layer: {}", pcallbackData->pMessage);
+
+        return VK_FALSE;
+    }
+};
+
+int main() {
+#ifdef DEBUG_BUILD
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%#] %v");
+#else
+    spdlog::set_level(spdlog::level::info);
+#endif
+    HelloTriangleApplication app;
+
+    try {
+        app.run();
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+----
+====

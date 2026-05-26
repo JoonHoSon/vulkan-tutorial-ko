@@ -1,0 +1,534 @@
+= 논리적 장치 및 대기열 (Logical device and queues)
+include::../common/header.adoc[]
+:imagesdir!:
+
+== 들어가며 (Introduction)
+
+사용할 물리적 장치를 선택한 후 우리는 그것과 인터페이스하기 위해 논리적 장치를 설정해야합니다. 논리 장치 생성 프로세스는 인스턴스 생성 프로세스와 유사하며 사용하려는 기능을 설명합니다. 또한 어떤 {queuef}을 사용할 수 있는지 쿼리한 지금 만들 대기열을 지정해야 합니다. 다양한 요구 사항이 있는 경우 동일한 물리적 장치에서 여러 논리 장치를 만들 수도 있습니다.
+
+논리 장치 핸들을 저장할 새 클래스 멤버를 추가하는 것으로 시작하십시오.
+
+[source,cpp]
+----
+VkDevice device;
+----
+
+다음으로 ``initVulkan``에서 호출되는 ``createLogicalDevice`` 함수를 추가합니다.
+
+[source,cpp]
+----
+void initVulkan() {
+    createInstance();
+    setupDebugMessenger();
+    pickPhysicalDevice();
+    createLogicalDevice();
+}
+
+void createLogicalDevice() {
+
+}
+----
+
+== 큐 지정 (Specifying the queues to be created)
+
+논리 장치의 생성에는 구조체에서 많은 세부 정보를 다시 지정하는 것이 포함되며, 그 중 첫 번째는 {VkDeviceQueueCreateInfo}[``VkDeviceQueueCreateInfo``]가 됩니다. 이 구조는 단일 {queuef}에 대해 원하는 {queue} 수에 대해 설명합니다. 현재 우리는 그래픽 기능이있는 {queue}에만 관심이 있습니다.
+
+[source,cpp]
+----
+QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+
+VkDeviceQueueCreateInfo queueCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CRETAE_INFO,
+    .queueFamilyIndex = indices.graphicsFamily.value(),
+    .queueCount = 1,
+};
+----
+
+현재 사용 가능한 드라이버는 각 {queuef}에 대해 소수의 대기열만 만들 수 있으며 실제로 둘 이상의 {queue}이 필요하지 않습니다. 여러 스레드에서 모든 명령 버퍼를 만든 다음 단일 로우 오버 헤드 호출로 메인 스레드에서 한 번에 모두 제출할 수 있기 때문입니다.
+
+{vk}을 사용하면 0.0에서 1.0 사이의 부동 소수점 번호를 사용하여 명령 버퍼 실행의 스케줄링에 영향을 미치기 위해 {queue}에 우선 순위를 할당할 수 있습니다. 이것은 하나의 {queue}만 있는 경우에도 필요합니다.
+
+[source,cpp]
+----
+float queuePriority = 1.0f;
+queueCreateInfo.pQueuePriorities = &queuePriority;
+----
+
+== 사용 된 장치 기능 지정 (Specifying used device features)
+
+다음에 지정할 정보는 우리가 사용할 장치 기능 집합입니다. 이것들은 우리가 이전 장에서 {vkGetPhysicalDeviceFeatures}[``vkGetPhysicalDeviceFeatures``]를 지원하도록 요청한 기능입니다. 지오메트리 셰이더와 같은 이전 장에서. 지금 우리는 특별한 것이 필요하지 않으므로 단순히 그것을 정의하고 ``VK_FALSE``에 모든 것을 맡길 수 있습니다. 우리는 {vk}과 함께 더 흥미로운 일을 시작하려고하면이 구조로 돌아올 것입니다(__The next information to specify is the set of device features that we'll be using. These are the features that we queried support for with vkGetPhysicalDeviceFeatures in the previous chapter, like geometry shaders. Right now we don't need anything special, so we can simply define it and leave everything to VK_FALSE. We'll come back to this structure once we're about to start doing more interesting things with Vulkan__).
+
+[source,cpp]
+----
+VkPhysicalDeviceFeatures deviceFeatures{};
+----
+
+== 논리 장치 만들기 (Creating the logical device)
+
+이전 두 구조를 제자리에 두고, 우리는 주요 {VkDeviceCreateInfo}[``VkDeviceCreateInfo``] 구조를 채울 수 있습니다.
+
+[source,cpp]
+----
+VkDeviceCreateInfo createInfo{
+    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+};
+----
+
+먼저 {queue} 생성 정보 및 장치 기능에 대한 포인터 추가:
+
+[source,cpp]
+----
+createInfo.pQueueCreateInfos = &queueCreateInfo;
+createInfo.queueCreateInfoCount = 1;
+createInfo.pEnabledFeatures = &deviceFeatures;
+----
+
+나머지 정보는 {VkInstanceCreateInfo}[``VkInstanceCreateInfo``] 구조체와 유사하며 확장 및 유효성 검사 계층을 지정해야 합니다. 차이점은 이번에는 장치 특정입니다.
+
+장치 특정 확장의 예는 ``VK_KHR_swapchain``으로 해당 장치에서 Windows로 렌더링된 이미지를 표시할 수 있습니다. 시스템에는 이러한 능력이 부족한 ``Vulkan`` 장치가 있을 가능성이 있습니다. 예를 들어 컴퓨팅 작업만 지원하기 때문입니다. 우리는 스왑 체인 장에서이 확장으로 돌아올 것입니다.
+
+{vk}의 이전 구현은 인스턴스와 장치 특정 유효성 검사 계층을 구분했지만 link:https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/chap40.html#extendingvulkan-layers-devicelayerdeprecation[더 이상 그렇지 않습니다]. 즉, {VkDeviceCreateInfo}[``VkDeviceCreateInfo``]의 ``enabledLayerCount`` 및 ``ppEnabledLayerNames`` 필드는 최신 구현에 의해 무시됩니다. 그러나 어쨌든 이전 구현과 호환되도록 설정하는 것이 좋습니다.
+
+[source,cpp]
+----
+createInfo.enabledExtensionCount = 0;
+
+if (enableValidationLayers) {
+    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
+} else {
+    createInfo.enabledLayerCount = 0;
+}
+----
+
+현재로서는 장치 특정 확장이 필요하지 않습니다.
+
+이제 적절하게 명명된 {vkCreateDevice}[``vkCreateDevice``] 함수에 대한 호출로 논리 장치를 인스턴스화할 준비가 되었습니다.
+
+[source,cpp]
+----
+if (vkCreateDevice(_phsicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create logical device!");
+}
+----
+
+매개 변수는 인터페이스 할 물리적 장치, 방금 지정한 {queue} 및 사용 정보, 선택적 할당 콜백 포인터 및 논리 장치 핸들을 저장할 변수에 대한 포인터입니다. 인스턴스 생성 기능과 마찬가지로, 이 호출은 존재하지 않는 확장을 가능하게 하거나 지원되지 않는 기능의 원하는 사용을 지정하는 것에 기초하여 오류를 반환할 수 있다.
+
+장치는 {vkDestroyDevice}[``vkDestroyDevice``] 함수를 이용하여 ``cleanup`` 함수에서 정리합니다.
+
+[source,cpp]
+----
+void cleanup() {
+    vkDestroyDevice(_device, nullptr);
+    ....
+}
+----
+
+논리 장치는 인스턴스와 직접 상호 작용하지 않으므로 매개 변수로 포함되지 않습니다.
+
+== 대기열 핸들 검색 (Retrieving queue handles)
+
+{queue}는 논리 장치와 함께 자동으로 생성되지만 아직 인터페이스 할 핸들이 없습니다. 먼저 클래스 멤버를 추가하여 그래픽 큐에 핸들을 저장합니다.
+
+[source,cpp]
+----
+VkQueue _graphicsQueue;
+----
+
+장치 {queue}는 장치가 파괴될 때 암시적으로 정리되므로 ``cleanup`` 함수에서는 아무 것도 할 필요가 없습니다.
+
+우리는 {vkGetDeviceQueue}[``vkGetDeviceQueue``] 함수를 사용하여 각 {queuef}의 {queue} 핸들을 검색 할 수 있습니다. 매개 변수는 논리 장치, {queuef}, {queue} 인덱스 및 {queue} 핸들을 저장할 변수에 대한 포인터입니다. 이 제품군에서 단일 {queue}만 만들고 있기 때문에 인덱스 0만 사용합니다.
+
+[source,cpp]
+----
+vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0, &_graphicsQueue);
+----
+
+논리 장치와 {queue} 핸들을 사용하면 이제 실제로 그래픽 카드를 사용하여 작업을 시작할 수 있습니다! link:../Presentation/WindowSurface.html[다음 몇 장에서는 결과를 창 시스템에 제시 할 리소스를 설정합니다].
+
+.작성자 버전의 전체 소스
+[%collapsible]
+====
+[source,cpp,linenums]
+----
+//
+// Created by JoonHo Son on 2026-05-17.
+//
+#include <vulkan/vulkan.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <optional>
+#include <stdexcept>
+#include <vector>
+
+#include "vulkan/vulkan_core.h"
+
+#if !defined(NDEBUG) || defined(_DEBUG)
+#define DEBUG_BUILD
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#else
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO
+#endif
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
+
+const uint32_t WIDTH = 800;
+const uint32_t HEIGHT = 600;
+
+const std::vector<const char*> validationLayers{
+    "VK_LAYER_KHRONOS_validation",
+};
+
+#ifdef DEBUG_BUILD
+const bool enableValidationLayers = true;
+#else
+const bool enableValidationLayers = false;
+#endif
+
+VkResult CreateDebugUtilsMessengerEXT(
+    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkCreateDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                   VkDebugUtilsMessengerEXT debugMessenger,
+                                   const VkAllocationCallbacks* pAllocator) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
+        instance, "vkDestroyDebugUtilsMessengerEXT");
+
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+
+    bool isComplete() { return graphicsFamily.has_value(); }
+};
+
+class HelloTriangleApplication {
+public:
+    void run() {
+        initWindow();
+        initVulkan();
+        mainLoop();
+        cleanup();
+    }
+
+private:
+    GLFWwindow* _window;
+
+    VkInstance _instance;
+
+    VkDebugUtilsMessengerEXT _debugMessenger;
+
+    VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+
+    VkDevice _device;
+
+    VkQueue _graphicsQueue;
+
+    void initWindow() {
+        glfwInit();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        _window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    }
+
+    void initVulkan() {
+        createInstance();
+        setupDebugMessenger();
+        pickPhysicalDevice();
+        createLogicalDevice();
+    }
+
+    void mainLoop() {
+        while (!glfwWindowShouldClose(_window)) {
+            glfwPollEvents();
+        }
+    }
+
+    void cleanup() {
+        vkDestroyDevice(_device, nullptr);
+
+        if (enableValidationLayers) {
+            DestroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+        }
+
+        vkDestroyInstance(_instance, nullptr);
+        glfwDestroyWindow(_window);
+        glfwTerminate();
+    }
+
+    void createInstance() {
+        if (enableValidationLayers && !checkValidationLayerSupport()) {
+            throw std::runtime_error(
+                "validation layers requested, but not available!");
+        }
+
+        VkApplicationInfo appInfo{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "Hello Triangle",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "No Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_0,
+        };
+
+        auto extensions = getRequiredExtensions();
+
+        VkInstanceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &appInfo,
+            .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+            .ppEnabledExtensionNames = extensions.data(),
+        };
+
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount =
+                static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+
+            populateDebugMessengerCreateInfo(debugCreateInfo);
+            createInfo.pNext =
+                (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+        } else {
+            createInfo.enabledLayerCount = 0;
+            createInfo.pNext = nullptr;
+        }
+
+        if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
+            SPDLOG_ERROR("----------------------------------------");
+            SPDLOG_ERROR("failed to create instance!");
+            SPDLOG_ERROR("----------------------------------------");
+
+            throw std::runtime_error("failed to create instance!");
+        }
+
+        for (const auto& extension : extensions) {
+            SPDLOG_DEBUG("\t {}", extension);
+        }
+    }
+
+    void populateDebugMessengerCreateInfo(
+        VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+        createInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = debugCallback,
+        };
+    }
+
+    void setupDebugMessenger() {
+        if (!enableValidationLayers) {
+            return;
+        }
+
+        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+
+        populateDebugMessengerCreateInfo(createInfo);
+
+        if (CreateDebugUtilsMessengerEXT(_instance, &createInfo, nullptr,
+                                         &_debugMessenger) != VK_SUCCESS) {
+            throw std::runtime_error("failed to set up debug messenger!");
+        }
+    }
+
+    void pickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, nullptr);
+
+        if (deviceCount == 0) {
+            SPDLOG_ERROR("Vulkan을 지원하는 GPU를 찾을 수 없음.");
+
+            throw std::runtime_error(
+                "failed to find GPUs with Vulkan support!");
+        }
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(_instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            if (isDeviceSuitable(device)) {
+                _physicalDevice = device;
+
+                break;
+            }
+        }
+
+        if (_physicalDevice == VK_NULL_HANDLE) {
+            SPDLOG_ERROR("사용 가능한 GPU를 찾지 못함");
+
+            throw std::runtime_error("failed to find a suitable GPU!");
+        }
+    }
+
+    void createLogicalDevice() {
+        QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+        float queuePriority = 1.0f;
+        VkDeviceQueueCreateInfo queueCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = indices.graphicsFamily.value(),
+            .queueCount = 1,
+            .pQueuePriorities = &queuePriority,
+        };
+
+        VkPhysicalDeviceFeatures deviceFeatures{};
+        VkDeviceCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .queueCreateInfoCount = 1,
+            .pQueueCreateInfos = &queueCreateInfo,
+            .enabledExtensionCount = 0,
+            .pEnabledFeatures = &deviceFeatures,
+        };
+
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount =
+                static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+        } else {
+            createInfo.enabledLayerCount = 0;
+        }
+
+        if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) !=
+            VK_SUCCESS) {
+            throw std::runtime_error("failed to create logical device!");
+        }
+
+        vkGetDeviceQueue(_device, indices.graphicsFamily.value(), 0,
+                         &_graphicsQueue);
+    }
+
+    bool isDeviceSuitable(VkPhysicalDevice device) {
+        QueueFamilyIndices indices = findQueueFamilies(device);
+
+        return indices.isComplete();
+    }
+
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices;
+        uint32_t queueFamilyCount = 0;
+
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                                 nullptr);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                                 queueFamilies.data());
+
+        for (uint32_t i = 0; i < queueFamilies.size(); i++) {
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = 1;
+            }
+
+            if (indices.isComplete()) {
+                break;
+            }
+        }
+
+        return indices;
+    }
+
+    std::vector<const char*> getRequiredExtensions() {
+        uint32_t glfwExtensionCount = 0;
+        const char** glfwExtensions;
+        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+        std::vector<const char*> extensions(
+            glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+        if (enableValidationLayers) {
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+
+        return extensions;
+    }
+
+    bool checkValidationLayerSupport() {
+        uint32_t layerCount;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        for (const char* layerName : validationLayers) {
+            bool layerFound = false;
+
+            for (const auto& layerProperties : availableLayers) {
+                SPDLOG_DEBUG("----------------------------------------------");
+                SPDLOG_DEBUG("layerName : {}", layerName);
+                SPDLOG_DEBUG("property's name : {}", layerProperties.layerName);
+
+                if (strcmp(layerName, layerProperties.layerName) == 0) {
+                    layerFound = true;
+
+                    break;
+                }
+            }
+
+            if (!layerFound) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+        [[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pcallbackData,
+        [[maybe_unused]] void* pUserData) {
+        SPDLOG_ERROR("validation layer: {}", pcallbackData->pMessage);
+
+        return VK_FALSE;
+    }
+};
+
+int main() {
+#ifdef DEBUG_BUILD
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%#] %v");
+#else
+    spdlog::set_level(spdlog::level::info);
+#endif
+    HelloTriangleApplication app;
+
+    try {
+        app.run();
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("{}", e.what());
+
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+----
+====
