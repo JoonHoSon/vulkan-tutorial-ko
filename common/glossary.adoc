@@ -8,6 +8,7 @@
 :smph: 세마포어(semaphore)
 :vertexbff: 정점버퍼(vertex buffer)
 :vertexshd: 정점세이터(vertex shader)
+:fragmentshd: 픽셀 색상 계산(fragment shader)
 :uniformbff: 균일버퍼(uniform buffer)
 :renderpass: 렌더패스(render pass)
 :wrapping: 포장(wrapping)
@@ -48,3 +49,11 @@
 :VkImageView: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageView.html
 :VkImageViewCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageViewCreateInfo.html
 :vkCreateImageView: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateImageView.html
+:glsl: https://en.wikipedia.org/wiki/OpenGL_Shading_Language
+:hlsl: https://en.wikipedia.org/wiki/High-Level_Shading_Language
+:spirv: https://www.khronos.org/spir
+:VkShaderModule: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkShaderModule.html
+:VkShaderModuleCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkShaderModuleCreateInfo.html
+:vkCreateShaderModule: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateShaderModule.html
+:vkDestroyShaderModule: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkDestroyShaderModule.html
+:VkPipelineShareerStageCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineShaderStageCreateInfo.html
