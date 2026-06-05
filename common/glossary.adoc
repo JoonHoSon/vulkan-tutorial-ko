@@ -57,3 +57,15 @@
 :vkCreateShaderModule: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateShaderModule.html
 :vkDestroyShaderModule: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkDestroyShaderModule.html
 :VkPipelineShareerStageCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineShaderStageCreateInfo.html
+:VkPipelineDynamicStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineDynamicStateCreateInfo.html
+:VkPipelineVertexInputStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineVertexInputStateCreateInfo.html
+:VkPipelineInputAssemblyStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineInputAssemblyStateCreateInfo.html
+:VkPipelineViewportStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineViewportStateCreateInfo.html
+:VkPipelineRasterizationStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineRasterizationStateCreateInfo.html
+:VkPipelineMultisampleStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineMultisampleStateCreateInfo.html
+:VkPipelineDepthStencilStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineDepthStencilStateCreateInfo.html
+:VkPipelineColorBlendAttachmentState: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineColorBlendAttachmentState.html
+:VkPipelineColorBlendStateCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineColorBlendStateCreateInfo.html
+:VkBlendFactor: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBlendFactor.html
+:VkBlendOp: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBlendOp.html
+:VkPipelineLayout: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineLayout.html

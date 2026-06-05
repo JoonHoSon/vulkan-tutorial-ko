@@ -17,3 +17,6 @@ asciidoctor -a stylesheet=../assets/stylesheet.css -D ./build/Presentation ./Pre
 
 echo "GraphicsPipelineBasics documents build..."
 asciidoctor -a stylesheet=../assets/stylesheet.css -D ./build/GraphicsPipelineBasics ./GraphicsPipelineBasics/*.adoc
+
+echo "Drawing documents build..."
+asciidoctor -a stylesheet=../assets/stylesheet.css -D ./build/Drawing ./Drawing/*.adoc
