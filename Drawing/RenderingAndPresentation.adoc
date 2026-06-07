@@ -398,7 +398,16 @@ vkQueuePresentKHR(_presentQueue, &presentInfo);
 
 여기까지 문제없이 올바르게 구현했다면, 프로그램을 실행했을 때 다음과 같은 형태의 결과물을 화면에서 확인할 수 있습니다.
 
-image::../assets/triangle_macos.png[align=center,width=80%]
+[cols="3a,3a,3a",options=header]
+|===
+^|macOS
+^|Linux
+^|Windows
+
+|image::../assets/triangle_macos.png[align=center,width=80%]
+|image::../assets/triangle_linux.png[align=center,width=80%]
+|image::../assets/triangle_windows.jpg[align=center,width=80%]
+|===
 
 [quote]
 ____
