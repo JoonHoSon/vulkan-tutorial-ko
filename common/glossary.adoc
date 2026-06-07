@@ -69,3 +69,6 @@
 :VkBlendFactor: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBlendFactor.html
 :VkBlendOp: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBlendOp.html
 :VkPipelineLayout: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineLayout.html
+:vkWaitForFences: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkWaitForFences.html
+:VkFenceCreateInfo: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFenceCreateInfo.html
+:vkResetCommandBuffer: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkResetCommandBuffer.html
