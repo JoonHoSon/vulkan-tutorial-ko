@@ -1,0 +1,226 @@
+= 스테이징 버퍼 (Staing buffer)
+include::../common/header.adoc[]
+:imagesdir!:
+
+== 개요 (Introduction)
+
+현재 우리가 구현한 정점 버퍼도 정상적으로 작동하긴 합니다. 하지만 CPU에서 접근 가능한 메모리 유형은 그래픽 카드(GPU)가 데이터를 읽기에 가장 효율적인 형태가 아닐 수 있습니다. GPU 성능을 최대로 끌어낼 수 있는 최적의 메모리는 ``VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT`` 플래그를 가지는데, 외장 그래픽 카드의 경우 대개 CPU가 이 영역에 직접 접근할 수 없습니다. 따라서 이번 장에서는 두 개의 정점 버퍼를 생성해 이 문제를 해결해 보겠습니다. 먼저 CPU가 접근할 수 있는 메모리에 정점 배열의 데이터를 임시로 올릴 '스테이징 버퍼'를 만듭니다. 그 다음 GPU 전용 메모리에 '최종 정점 버퍼'를 생성합니다. 마지막으로 버퍼 복사 명령을 실행해 스테이징 버퍼의 데이터를 실제 정점 버퍼로 이동시키겠습니다.
+
+== 전송 큐 (Transfer queue)
+
+버퍼 복사 명령을 실행하려면 전송 작업(Transfer operations)을 지원하는 큐 패밀리가 필요하며, 이는 ``VK_QUEUE_TRANSFER_BIT``으로 식별합니다. 다행히도 ``VK_QUEUE_GRAPHICS_BIT``이나 ``VK_QUEUE_COMPUTE_BIT``을 지원하는 큐 패밀리는 이 전송 기능을 기본적으로 포함하고 있습니다. 따라서 이 경우에는 굳이 ``queueFlags``에 전송 비트를 명시적으로 표시하지 않아도 전송 명령을 처리할 수 있습니다.
+
+조금 더 도전적인 과제를 원하신다면, 전송 작업만을 전담할 별도의 큐 패밀리를 직접 구현해 보셔도 좋습니다. 이를 위해 프로그램에 다음과 같은 수정이 필요합니다.
+
+* ``QueueFamilyIndices``와 ``findQueueFamilies``를 수정하여 그래픽 비트(``VK_QUEUE_GRAPHICS_BIT``)는 없고 전송 비트(``VK_QUEUE_TRANSFER_BIT``)만 있는 큐 패밀리를 명시적으로 찾도록 합니다.
+* ``createLogicalDevice``를 수정하여 이 전송 큐의 핸들을 요청합니다.
+* 전송 큐 패밀리에 제출할 커맨드 버퍼들을 위해 두 번째 커맨드 풀을 생성합니다.
+* 리소스의 공유 모드(``sharingMode``)를 ``VK_SHARING_MODE_CONCURRENT``로 변경하고, 그래픽과 전송 큐 패밀리를 둘 다 지정합니다.
+* 이번 장에서 사용할 ``vkCmdCopyBuffer``와 같은 모든 전송 명령을 그래픽 큐가 아닌 전송 큐에 제출합니다.
+
+손이 제법 많이 가지만, 큐 패밀리 간에 리소스를 어떻게 공유하는지 깊이 이해할 수 있는 좋은 기회가 될 것입니다.
+
+== 버퍼 생성 로직 추상화 (Abstracting buffer creation)
+
+이번 장에서는 여러 개의 버퍼를 만들어야 하므로, 버퍼 생성 로직을 별도의 헬퍼 함수로 분리하는 것이 좋습니다. ``createBuffer``라는 함수를 새로 만들고, 기존 ``createVertexBuffer`` 함수 안에 있던 코드(메모리 매핑 부분 제외)를 그리로 옮기세요.
+
+[source,cpp]
+----
+void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer,
+                    VkDeviceMemory& bufferMemory) {
+    const VkBufferCreateInfo bufferInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .flags = 0,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    if (vkCreateBuffer(_device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create buffer!");
+    }
+
+    VkMemoryRequirements memoryRequirements;
+
+    vkGetBufferMemoryRequirements(_device, buffer, &memoryRequirements);
+
+    VkMemoryAllocateInfo allocInfo {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, .allocationSize = memoryRequirements.size,
+        .memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, properties,
+    };
+
+    if (vkAllocateMemory(_device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate buffer memory!");
+    }
+
+    vkBindBufferMemory(_device, buffer, bufferMemory, 0);
+}
+----
+
+이 함수를 다양한 형태의 버퍼 생성에 재활용할 수 있도록 버퍼 크기(size), 메모리 속성(memory properties), 그리고 용도(usage)를 인자로 받을 수 있게 매개변수를 추가해야 합니다. 마지막 두 매개변수는 생성된 핸들 값을 받아올 출력용 변수(output variables)로 지정합니다.
+
+이제 ``createVertexBuffer``에서 버퍼 생성과 메모리 할당 코드를 지우고, 대신 방금 만든 ``createBuffer``를 호출하도록 수정하면 됩니다.
+
+[source,cpp]
+----
+void createVertexBuffer() {
+    const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, _vertexBuffer,
+                    _vertexBufferMemory);
+
+    void* data;
+
+    vkMapMemory(_device, _vertexBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+    vkUnmapMemory(_device, _vertexBufferMemory);
+}
+----
+
+코드를 고친 후 프로그램을 실행하여 정점 버퍼가 여전히 문제없이 잘 작동하는지 확인해 보세요.
+
+== 스테이징 버퍼 사용하기 (Using a staging buffer)
+
+이제 호스트 가시성(host visible) 버퍼를 임시 버퍼로만 사용하고, 디바이스 로컬(device local) 버퍼를 실제 정점 버퍼로 사용하도록 ``createVertexBuffer`` 함수를 수정해 보겠습니다.
+
+[source,cpp]
+----
+void createVertexBuffer() {
+    const VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+                    stagingBufferMemory);
+
+    void* data;
+
+    vkMapMemory(_device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+    vkUnmapMemory(_device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexBufferMemory);
+}
+----
+
+정점 데이터를 매핑하고 복사하기 위해 ``stagingBuffer``와 ``stagingBufferMemory``를 새로 도입합니다. 이번 장에서는 다음과 같은 두 가지 새로운 버퍼 용도 플래그를 사용합니다.
+
+* ``VK_BUFFER_USAGE_TRANSFER_SRC_BIT``: 메모리 전송 작업에서 데이터 소스(복사 대상)로 사용할 수 있는 버퍼입니다.
+* ``VK_BUFFER_USAGE_TRANSFER_DST_BIT``: 메모리 전송 작업에서 데이터 목적지(복사될 곳)로 사용할 수 있는 버퍼입니다.
+
+이제 ``_vertexBuffer``는 디바이스 로컬 메모리 유형에 할당되므로, 일반적으로 vkMapMemory를 사용할 수 없습니다. 대신 ``stagingBuffer``에서 ``_vertexBuffer``로 데이터를 복사할 수는 있습니다. 이를 위해 ``stagingBuffer``에는 전송 소스 플래그(`VK_BUFFER_USAGE_TRANSFER_SRC_BIT`)를, ``_vertexBuffer``에는 기존 정점 버퍼 용도 플래그와 함께 전송 목적지 플래그(``VK_BUFFER_USAGE_TRANSFER_DST_BIT``)를 명시하여 복사 작업을 진행하겠다는 의도를 드라이버에 알려야 합니다.
+
+이제 한 버퍼의 내용을 다른 버퍼로 복사하는 ``copyBuffer``라는 함수를 작성해 보겠습니다.
+
+[source,cpp]
+----
+void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDevicesize size) {
+    
+}
+----
+
+메모리 전송 작업은 그리기 명령과 마찬가지로 커맨드 버퍼를 통해 실행됩니다. 따라서 먼저 임시 커맨드 버퍼를 할당해야 합니다. 이러한 수명이 짧은 버퍼들을 위해서 별도의 커맨드 풀을 만드는 것이 좋을 수 있는데, 드라이버가 메모리 할당 최적화를 적용할 수 있기 때문입니다. 이 경우 커맨드 풀을 생성할 때 ``VK_COMMAND_POOL_CREATE_TRANSIENT_BIT`` 플래그를 지정하면 됩니다.
+
+[source,cpp]
+----
+void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    VkCommandbufferAllocateInfo allocInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATION_INFO,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandPool = _commandPool,
+        .commandBufferCount = 1,
+    };
+
+    VkCommandBuffer commandBuffer;
+
+    vkAllocateCommandBuffer(_device, &allocInfo, &commandBuffer);
+}
+----
+
+그리고 곧바로 커맨드 버퍼 기록을 시작합니다.
+
+[source,cpp]
+----
+VkCommandBufferBeginInfo beginInfo{
+    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+};
+
+vkBeginCommandBuffer(commandBuffer, &beginInfo);
+----
+
+이 커맨드 버퍼는 단 한 번만 사용할 것이며, 복사 작업이 끝날 때까지 함수를 리턴하지 않고 기다릴 것입니다. 이러한 의도를 ``VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT`` 플래그를 통해 드라이버에 전달하는 것이 좋습니다.
+
+[source,cpp]
+----
+VkBufferCopy copyRegion{
+    .srcOffset = 0, // Optional
+    .dstOffset = 0, // Optional
+    .size = size,
+};
+
+vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+----
+
+버퍼의 데이터 전송은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdCopyBuffer.html[``vkCmdCopyBuffer``] 명령으로 수행합니다. 이 함수는 소스 버퍼, 목적지 버퍼, 그리고 복사할 영역(region)들의 배열을 인자로 받습니다. 각 영역은 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBufferCopy.html[``VkBufferCopy``] 구조체로 정의하며 소스 버퍼 오프셋, 목적지 버퍼 오프셋, 그리고 복사할 크기로 구성됩니다. https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkMapMemory.html[``vkMapMemory``] 명령과 달리 여기서는 크기에 ``VK_WHOLE_SIZE``를 지정할 수 없으니 주의해야 합니다.
+
+[source,cpp]
+----
+vkEndCommandBuffer(commandBuffer);
+----
+
+이 커맨드 버퍼에는 복사 명령만 들어가므로, 직후에 기록을 바로 중단하면 됩니다. 이제 전송을 완료하기 위해 커맨드 버퍼를 실행합니다.
+
+[source,cpp]
+----
+VkSubmitInfo submitInfo{
+    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+    .commandBufferCount = 1,
+    pCommandBuffers = &commandBuffer,
+};
+
+vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+vkQueueWaitIdle(_graphicsQueue);
+----
+
+그리기 명령과 달라서 이번에는 대기해야 할 이벤트가 없습니다. 그저 버퍼 전송이 즉시 실행되기를 바랄 뿐입니다. 이번에도 전송 완료를 기다리는 방법은 두 가지가 있습니다. 펜스(fence)를 사용하여 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkWaitForFences.html[``vkWaitForFences``]로 기다리거나, 간단히 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html[``vkQueueWaitIdle``]을 사용해 전송 큐가 대기 상태(idle)가 될 때까지 기다리는 것입니다. 펜스를 사용하면 작업을 하나씩 실행하는 대신 여러 전송을 동시에 스케줄링하고 한 번에 완료를 기다릴 수 있어서 드라이버가 최적화할 여지가 더 많아집니다.
+
+[source,cpp]
+----
+vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);
+----
+
+전송 작업에 사용한 커맨드 버퍼를 정리(clean up)하는 것도 잊지 마세요.
+
+이제 ``createVertexBuffer`` 함수에서 ``copyBuffer``를 호출하여 정점 데이터를 디바이스 로컬 버퍼로 옮길 수 있습니다.
+
+[source,cpp]
+----
+createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexBufferMemory);
+
+copyBuffer(stagingBuffer, _vertexBuffer, bufferSize);
+----
+
+스테이징 버퍼의 데이터를 디바이스 버퍼로 모두 복사했다면, 임시로 썼던 스테이징 버퍼는 정리해야 합니다.
+
+[source,cpp]
+----
+...
+copyBuffer(stagingBuffer, _vertexBuffer, bufferSize);
+
+vkDestroyBuffer(_device, stagingBuffer, nullptr);
+vkFreeMemory(_device, stagingBufferMemory, nullptr);
+----
+
+프로그램을 실행하여 늘 보던 삼각형이 다시 잘 나오는지 확인해 보세요. 지금 당장은 성능 향상이 눈에 보이지 않겠지만, 이제 정점 데이터를 고성능 메모리에서 직접 로드하고 있는 상태입니다. 이는 앞으로 더 복잡한 지오메트리를 렌더링하기 시작할 때 빛을 발하게 됩니다.
+
+== 결론 (Conclusion)
+
+실제 상용 애플리케이션을 개발할 때는 모든 버퍼마다 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkAllocateMemory.html[``vkAllocateMemory``]를 개별적으로 호출해서는 안 된다는 점을 꼭 기억해야 합니다. 동시에 할당할 수 있는 메모리 최대 개수는 물리 디바이스의 제한 사항인 ``maxMemoryAllocationCount``에 의해 제한되는데, NVIDIA GTX 1080 같은 고사양 하드웨어조차 이 값이 ``4096``개 정도로 매우 적을 수 있습니다. 수많은 객체의 메모리를 동시에 올바르게 할당하려면, 단 한 번의 커다란 메모리 할당을 수행한 뒤 여러 함수에서 보았던 오프셋(``offset``) 매개변수들을 활용해 이 거대한 덩어리를 여러 객체가 나누어 쓰도록 커스텀 할당기(allocator)를 구현해야 합니다.
+
+이러한 할당기를 직접 구현하셔도 좋고, AMD GPUOpen 진영에서 제공하는 link:https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator[``VulkanMemoryAllocator``] (VMA) 라이브러리를 가져다 쓰셔도 좋습니다. 다만 본 튜토리얼에서는 당장 이 제한 수치에 근처도 가지 않을 것이므로, 지금처럼 리소스마다 독립된 할당을 진행해도 괜찮습니다.
+
+NOTE: link:./IndexBuffer.html[인덱스 버퍼] 이동
