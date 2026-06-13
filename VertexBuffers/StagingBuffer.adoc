@@ -110,7 +110,7 @@ void createVertexBuffer() {
 * ``VK_BUFFER_USAGE_TRANSFER_SRC_BIT``: 메모리 전송 작업에서 데이터 소스(복사 대상)로 사용할 수 있는 버퍼입니다.
 * ``VK_BUFFER_USAGE_TRANSFER_DST_BIT``: 메모리 전송 작업에서 데이터 목적지(복사될 곳)로 사용할 수 있는 버퍼입니다.
 
-이제 ``_vertexBuffer``는 디바이스 로컬 메모리 유형에 할당되므로, 일반적으로 vkMapMemory를 사용할 수 없습니다. 대신 ``stagingBuffer``에서 ``_vertexBuffer``로 데이터를 복사할 수는 있습니다. 이를 위해 ``stagingBuffer``에는 전송 소스 플래그(`VK_BUFFER_USAGE_TRANSFER_SRC_BIT`)를, ``_vertexBuffer``에는 기존 정점 버퍼 용도 플래그와 함께 전송 목적지 플래그(``VK_BUFFER_USAGE_TRANSFER_DST_BIT``)를 명시하여 복사 작업을 진행하겠다는 의도를 드라이버에 알려야 합니다.
+이제 ``_vertexBuffer``는 디바이스 로컬 메모리 유형에 할당되므로, 일반적으로 {vkMapMemory}[``vkMapMemory``]를 사용할 수 없습니다. 대신 ``stagingBuffer``에서 ``_vertexBuffer``로 데이터를 복사할 수는 있습니다. 이를 위해 ``stagingBuffer``에는 전송 소스 플래그(`VK_BUFFER_USAGE_TRANSFER_SRC_BIT`)를, ``_vertexBuffer``에는 기존 정점 버퍼 용도 플래그와 함께 전송 목적지 플래그(``VK_BUFFER_USAGE_TRANSFER_DST_BIT``)를 명시하여 복사 작업을 진행하겠다는 의도를 드라이버에 알려야 합니다.
 
 이제 한 버퍼의 내용을 다른 버퍼로 복사하는 ``copyBuffer``라는 함수를 작성해 보겠습니다.
 
