@@ -85,3 +85,14 @@
 :VkDescriptorSetLayoutCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorSetLayoutCreateInfo.html
 :VkPipelineLayoutCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPipelineLayoutCreateInfo.html
 :vkMapMemory: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkMapMemory.html
+:VkDescriptorPoolSize: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorPoolSize.html
+:VkDescriptorPoolCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorPoolCreateInfo.html
+:vkCreateDescriptorPool: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateDescriptorPool.html
+:VkDescriptorSetAllocateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorSetAllocateInfo.html
+:vkAllocateDescriptorSets: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkAllocateDescriptorSets.html
+:VkDescriptorBufferInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorBufferInfo.html
+:vkUpdateDescriptorSets: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkUpdateDescriptorSets.html
+:VkWriteDescriptorSet: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkWriteDescriptorSet.html
+:VkCopyDescriptorSet: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkCopyDescriptorSet.html
+:vkCmdBindDescriptorSets: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdBindDescriptorSets.html
+:vkCmdDrawIndexed: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdDrawIndexed.html

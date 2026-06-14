@@ -36,7 +36,7 @@ std::vector<VkFence> _inFlightFences;
 [source,cpp]
 ----
 void createCommandBuffers() {
-    _commandBuffers.reserve(MAX_FRAME_IN_FLIGHT);
+    _commandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
 
     VkCommandBufferAllocateInfo allocInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -56,9 +56,9 @@ void createCommandBuffers() {
 [source,cpp]
 ----
 void createSyncObjects() {
-    _imageAvailableSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-    _renderFinishedSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-    _inFlightFences.resize(MAX_FRAME_IN_FLIGHT);
+    _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -69,7 +69,7 @@ void createSyncObjects() {
         .flags = VK_FENCE_CREATE_SIGNALED_BIT,
     };
 
-    for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VK_SUCCESS
             || vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]) != VK_SUCCESS
             || vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]) != VK_SUCCESS) {
@@ -84,7 +84,7 @@ void createSyncObjects() {
 [source,cpp]
 ----
 void cleanup() {
-    for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(_device, _inFlightFences[i], nullptr);
@@ -148,7 +148,7 @@ void drawFrame() {
 
     vkQueuePresentKHR(_presentQueue, &presentInfo);
 
-    currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 ----
 
@@ -202,7 +202,7 @@ link:../SwapChainRecreation.html[다음 장]에서는 올바르게 작동하는 
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
-const uint32_t MAX_FRAME_IN_FLIGHT = 2;
+const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<const char*> validationLayers{
     "VK_LAYER_KHRONOS_validation",
@@ -346,7 +346,7 @@ private:
     }
 
     void cleanup() {
-        for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(_device, _inFlightFences[i], nullptr);
@@ -827,7 +827,7 @@ private:
     }
 
     void createCommandBuffers() {
-        _commandBuffers.reserve(MAX_FRAME_IN_FLIGHT);
+        _commandBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
 
         VkCommandBufferAllocateInfo allocInfo{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -889,9 +889,9 @@ private:
     }
 
     void createSyncObjects() {
-        _imageAvailableSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-        _renderFinishedSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-        _inFlightFences.resize(MAX_FRAME_IN_FLIGHT);
+        _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        _renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        _inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
         VkSemaphoreCreateInfo semaphoreInfo{
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -902,7 +902,7 @@ private:
             .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
 
-        for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             if (vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VK_SUCCESS
                 || vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]) != VK_SUCCESS
                 || vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]) != VK_SUCCESS) {
@@ -953,7 +953,7 @@ private:
 
         vkQueuePresentKHR(_presentQueue, &presentInfo);
 
-        currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
     VkShaderModule createShaderModule(const std::vector<char>& code) {

@@ -65,7 +65,7 @@ void cleanup() {
     vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
     vkDestroyRenderPass(_device, _renderPass, nullptr);
 
-    for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(_device, _inFlightFences[i], nullptr);
@@ -133,7 +133,7 @@ if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
     throw std::runtime_error("failed to present swap chain image!");
 }
 
-currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 ----
 
 ``vkQueuePresentKHR`` 함수도 동일한 의미를 가진 같은 값들을 반환합니다. 다만 이 단계(화면 출력)에서는 가장 최선의 결과물을 보여주어야 하므로, 스왑체인이 적정하지 않은(SUBOPTIMAL) 상태일 때도 스왑체인을 재생성하도록 처리하겠습니다.
