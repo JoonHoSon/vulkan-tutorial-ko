@@ -107,3 +107,8 @@
 :vkQueueWaitIdle: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html
 :VkFormat: link: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFormat.html
 :VkBufferImageCopy: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBufferImageCopy.html
+:VkSamplerCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSamplerCreateInfo.html
+:VkPhysicalDeviceProperties: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceProperties.html
+:VkPhysicalDeviceLimits: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceLimits.html
+:vkCreateSampler: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateSampler.html
+:VkPhysicalDeviceFeatures: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceFeatures.html
