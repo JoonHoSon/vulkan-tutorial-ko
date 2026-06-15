@@ -185,7 +185,7 @@ vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 vkQueueWaitIdle(_graphicsQueue);
 ----
 
-그리기 명령과 달라서 이번에는 대기해야 할 이벤트가 없습니다. 그저 버퍼 전송이 즉시 실행되기를 바랄 뿐입니다. 이번에도 전송 완료를 기다리는 방법은 두 가지가 있습니다. 펜스(fence)를 사용하여 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkWaitForFences.html[``vkWaitForFences``]로 기다리거나, 간단히 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html[``vkQueueWaitIdle``]을 사용해 전송 큐가 대기 상태(idle)가 될 때까지 기다리는 것입니다. 펜스를 사용하면 작업을 하나씩 실행하는 대신 여러 전송을 동시에 스케줄링하고 한 번에 완료를 기다릴 수 있어서 드라이버가 최적화할 여지가 더 많아집니다.
+그리기 명령과 달라서 이번에는 대기해야 할 이벤트가 없습니다. 그저 버퍼 전송이 즉시 실행되기를 바랄 뿐입니다. 이번에도 전송 완료를 기다리는 방법은 두 가지가 있습니다. 펜스(fence)를 사용하여 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkWaitForFences.html[``vkWaitForFences``]로 기다리거나, 간단히 {vkQueueWaitIdle}[``vkQueueWaitIdle``]을 사용해 전송 큐가 대기 상태(idle)가 될 때까지 기다리는 것입니다. 펜스를 사용하면 작업을 하나씩 실행하는 대신 여러 전송을 동시에 스케줄링하고 한 번에 완료를 기다릴 수 있어서 드라이버가 최적화할 여지가 더 많아집니다.
 
 [source,cpp]
 ----

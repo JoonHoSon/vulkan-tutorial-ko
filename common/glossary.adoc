@@ -96,3 +96,14 @@
 :VkCopyDescriptorSet: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkCopyDescriptorSet.html
 :vkCmdBindDescriptorSets: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdBindDescriptorSets.html
 :vkCmdDrawIndexed: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdDrawIndexed.html
+:vkCmdCopyImageToBuffer: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdCopyImageToBuffer.html
+:vkCmdCopyBufferToImage: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdCopyBufferToImage.html
+:VkImageCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageCreateInfo.html
+:vkCreateImage: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateImage.html
+:vkGetBufferMemoryRequirements: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetBufferMemoryRequirements.html
+:vkGetImageMemoryRequirements: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetImageMemoryRequirements.html
+:vkBindBufferMemory: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkBindBufferMemory.html
+:vkBindImageMemory: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkBindImageMemory.html
+:vkQueueWaitIdle: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html
+:VkFormat: link: https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFormat.html
+:VkBufferImageCopy: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkBufferImageCopy.html

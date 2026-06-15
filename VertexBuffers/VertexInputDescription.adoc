@@ -182,7 +182,7 @@ attributeDescriptions[0].offset = offsetof(Vertex, post);
 |배정밀도(64비트) 부동소수점
 |===
 
-NOTE: link:https://registry.khronos.org/VulkanSC/specs/1.0-extensions/man/html/VkFormat.html[VkFormat 참고]
+NOTE: {VkFormat}[VkFormat 참고]
 
 ``format`` 파라미터는 속성 데이터의 바이트 크기를 암시적으로 정의하며, ``offset`` 파라미터는 개별 정점 데이터의 시작 지점부터 몇 바이트 뒤부터 읽어야 하는지 그 간격을 지정합니다. 바인딩은 한 번에 하나의 ``Vertex`` 구조체를 로드하며, 위치 속성(``pos``)은 이 구조체의 시작 지점으로부터 ``0``바이트 오프셋에 위치합니다. 이는 ``offsetof`` 매크로를 사용해 자동으로 계산할 수 있습니다.
 

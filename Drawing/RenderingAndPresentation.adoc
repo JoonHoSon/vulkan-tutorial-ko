@@ -434,7 +434,7 @@ void mainLoop() {
 }
 ----
 
-특정 커맨드 큐의 작업만 끝내고 싶다면 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkQueueWaitIdle.html[``vkQueueWaitIdle``] 함수를 사용할 수도 있습니다. 이 함수들은 아주 원시적이면서도 확실한 동기화 방식으로 활용될 수 있습니다. 이제 코드를 수정하고 창을 닫으면 프로그램이 아무런 에러 없이 깔끔하게 종료되는 것을 확인할 수 있습니다.
+특정 커맨드 큐의 작업만 끝내고 싶다면 {vkQueueWaitIdle}[``vkQueueWaitIdle``] 함수를 사용할 수도 있습니다. 이 함수들은 아주 원시적이면서도 확실한 동기화 방식으로 활용될 수 있습니다. 이제 코드를 수정하고 창을 닫으면 프로그램이 아무런 에러 없이 깔끔하게 종료되는 것을 확인할 수 있습니다.
 
 == 결론 (Conclusion)
 
