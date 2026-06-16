@@ -134,7 +134,7 @@ vkUnmapMemory(_device, stagingBufferMemory);
 stbi_image_free(pixels);
 ----
 
-== 텍스쳐 이미지 (Texture image)
+== 텍스처 이미지 (Texture image)
 
 셰이더가 버퍼에 있는 픽셀 값에 직접 접근하도록 설정할 수도 있지만, Vulkan에서는 이 목적으로 이미지 객체를 사용하는 것이 훨씬 좋습니다. 이미지 객체를 사용하면 2D 좌표를 활용할 수 있어 색상을 더 쉽고 빠르게 추출할 수 있기 때문입니다. 이미지 객체 내부의 픽셀은 텍셀(texel)이라고 부르며, 이제부터는 이 용어를 사용하겠습니다. 다음과 같이 새로운 클래스 멤버 변수들을 추가해 줍니다.
 

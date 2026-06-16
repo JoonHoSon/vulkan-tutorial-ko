@@ -112,3 +112,6 @@
 :VkPhysicalDeviceLimits: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceLimits.html
 :vkCreateSampler: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCreateSampler.html
 :VkPhysicalDeviceFeatures: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPhysicalDeviceFeatures.html
+:VkPoolSize: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPoolSize.html
+:VkDescriptorImageInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorImageInfo.html
+:VkVertexInputAttributeDescription: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkVertexInputAttributeDescription.html
