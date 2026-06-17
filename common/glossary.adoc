@@ -115,3 +115,9 @@
 :VkPoolSize: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkPoolSize.html
 :VkDescriptorImageInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkDescriptorImageInfo.html
 :VkVertexInputAttributeDescription: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkVertexInputAttributeDescription.html
+:vkGetPhysicalDeviceFormatProperties: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkGetPhysicalDeviceFormatProperties.html
+:VkFormatProperties: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFormatProperties.html
+:VkAttachmentDescription: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkAttachmentDescription.html
+:VkSubpassDependency: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSubpassDependency.html
+:VkClearValue: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkClearValue.html
+:VkGraphicsPipelineCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkGraphicsPipelineCreateInfo.html
