@@ -1,0 +1,191 @@
+= 모델 로딩 (Loading models)
+include::./common/header.adoc[]
+:imagesdir!:
+
+== 개요 (Introduction)
+
+이제 여러분의 프로그램은 텍스처가 입혀진 3D 메쉬를 렌더링할 준비가 되었지만, 지금처럼 코드에 정점과 인덱스 배열을 직접 적어 넣는 방식으로는 흥미로운 그래픽을 만들기 어렵습니다. 이번 장에서는 실제 모델 파일에서 정점과 인덱스 데이터를 읽어와 그래픽 카드가 제대로 실력 발휘를 할 수 있도록 프로그램을 확장해 보겠습니다.
+
+많은 그래픽 API 튜토리얼에서는 이쯤에서 독자에게 OBJ 로더를 직접 구현해 보라고 권합니다. 하지만 이 방식의 문제는 조금만 복잡하고 흥미로운 3D 애플리케이션을 만들려고 해도, OBJ 포맷이 지원하지 않는 '스켈레탈 애니메이션(Skeletal Animation)' 같은 기능에 금방 부딪힌다는 점입니다. 따라서 이번 장에서는 OBJ 모델에서 메쉬 데이터를 가져오되, 파일을 읽는 세부적인 코드 구현보다는 가져온 메쉬 데이터를 프로그램 자체와 어떻게 유기적으로 결합하고 연동할 것인지에 더 집중해 보겠습니다.
+
+== 라이브러리 (Library)
+
+OBJ 파일에서 정점(Vertices)과 페이스(Faces) 데이터를 읽어오기 위해 tinyobjloader 라이브러리를 사용할 것입니다. 이 라이브러리는 속도가 빠를 뿐만 아니라, 앞서 사용했던 stb_image처럼 단 하나의 헤더 파일로만 이루어져 있어 프로젝트에 추가하기가 매우 쉽습니다. 위에 링크된 저장소(Repository)로 이동하여 tiny_obj_loader.h 파일을 다운로드한 뒤, 여러분의 라이브러리 디렉터리 폴더에 넣어주세요.
+
+NOTE: 현재 Windows, Clang 및 CMake 기준 작성중이므로 tinyobjloader 설정 과정은 생략
+
+== 샘플 메쉬 (Sample mesh)
+
+이번 장에서는 아직 조명(Lighting) 기능을 구현하지 않으므로, 텍스처 자체에 조명 효과가 미리 입혀진(Baked) 샘플 모델을 사용하는 것이 좋습니다. 이러한 모델은 link:https://sketchfab.com/[스케치팹(Sketchfab)]에서 3D 스캔 모델을 검색하면 쉽게 찾을 수 있습니다. 해당 사이트의 많은 모델이 허용 범위가 넓은 라이선스와 함께 OBJ 포맷으로 제공됩니다.
+
+이번 튜토리얼에서는 link:https://sketchfab.com/nigelgoh[nigelgoh] 작가의 link:https://sketchfab.com/3d-models/viking-room-a49f1b8e4f5c4ecf9e1fe7d81915ad38[Viking room] 모델(link:https://web.archive.org/web/20200428202538/https://sketchfab.com/3d-models/viking-room-a49f1b8e4f5c4ecf9e1fe7d81915ad38[CC BY 4.0 라이선스])을 사용하기로 했습니다. 기존에 코드로 작성했던 도형 대신 곧바로 바꿔 끼워 넣을 수 있도록 모델의 크기와 방향을 미리 조금 다듬어 두었습니다.
+
+* link:https://vulkan-tutorial.com/resources/viking_room.obj[viking_room.obj]
+* link:https://vulkan-tutorial.com/resources/viking_room.png[viking_room.png]
+
+원하신다면 다른 모델을 사용하셔도 무방합니다. 다만, 단 하나의 재질(Material)로만 구성되어 있고 크기가 약 1.5 x 1.5 x 1.5 유닛 정도인 모델이어야 합니다. 모델이 이보다 크다면 뷰 행렬(View Matrix)을 수정해야 합니다. 준비한 모델 파일은 ``shaders`` 및 ``textures`` 폴더와 같은 위치에 ``models``라는 새 디렉터리를 만들어 넣어주시고, 텍스처 이미지는 기존 ``textures`` 디렉터리에 넣어주세요.
+
+프로그램에 모델과 텍스처의 경로를 지정할 두 개의 새로운 설정 변수를 추가합니다.
+
+[source,cpp]
+----
+const uint32_t WIDTH = 800;
+const uint32_t HEIGHT = 600;
+
+const std::string MODEL_PATH = "./models/viking_room.obj";
+const std::string TEXTURE_PATH = "./textures/viking_room.png";
+----
+
+그리고 이 경로 변수를 사용하도록 ``createTextureImage`` 함수를 업데이트합니다.
+
+[source,cpp]
+----
+stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+----
+
+== 정점과 인덱스 로딩 (Loading vertices and indices)
+
+이제 모델 파일에서 정점(Vertices)과 인덱스(Indices)를 직접 읽어올 것이므로, 기존에 전역 변수로 선언해 두었던 ``vertices``와 ``indices`` 배열은 지워주세요. 대신 클래스 멤버 변수로서 값을 변경할 수 있는 컨테이너를 다음과 같이 추가합니다.
+
+[source,cpp]
+----
+std::vector<Vertex> vertices;
+std::vector<uint32_t> indices;
+VkBuffer _vertexBuffer;
+VkDeviceMemory _vertexBufferMemory;
+----
+
+정점의 개수가 65,535개를 훨씬 넘어설 것이기 때문에, 인덱스의 데이터 타입을 ``uint16_t``에서 ``uint32_t``로 변경해야 합니다. 이에 맞추어 ``vkCmdBindIndexBuffer`` 함수의 매개변수도 함께 변경하는 것을 잊지 마세요.
+
+[source,cpp]
+----
+// void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+----
+
+tinyobjloader 라이브러리를 포함하는 방식은 예전에 사용했던 STB 라이브러리들과 같습니다. ``tiny_obj_loader.h`` 파일을 포함하되, 링크 에러(Linker Error)를 방지하고 실제 함수 본문들을 구현체로 포함할 수 있도록 소스 파일 중 단 한 곳에만 ``TINYOBJLOADER_IMPLEMENTATION`` 매크로를 정의해 주어야 합니다.
+
+[source,cpp]
+----
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+----
+
+이제 이 라이브러리를 사용해 메쉬의 정점 데이터를 읽고, ``vertices``와 ``indices`` 컨테이너를 채워 넣는 ``loadModel`` 함수를 작성해 보겠습니다. 이 함수는 정점 버퍼와 인덱스 버퍼가 생성되기 전 적절한 시점에 호출되어야 합니다.
+
+[source,cpp]
+----
+void initVulkan() {
+    ...
+    loadModel();
+    createVertexBuffer();
+    createIndexBuffer();
+    ...
+}
+...
+void loadModel() {
+
+}
+----
+
+``tinyobj::LoadObj`` 함수를 호출하면, 모델 파일을 읽어 라이브러리가 관리하는 내부 데이터 구조에 담게 됩니다.
+
+NOTE: tinyobj 2.0.0 RC 버전에서 ``std::string* warn`` 인자 추가됨
+
+[source,cpp]
+----
+void loadModel() {
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string warn;
+    std::string err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+        throw std::runtime_error(err);
+    }
+}
+----
+
+OBJ 파일은 정점 위치(Positions), 법선 벡터(Normals), 텍스처 좌표(Texture coordinates), 그리고 페이스(Faces, 면) 정보로 구성됩니다. 페이스는 원하는 개수만큼의 정점들로 이루어지며, 각 정점은 인덱스(Index) 형태로 위치, 법선, 텍스처 좌표를 참조합니다. 이러한 구조 덕분에 정점 전체뿐만 아니라 개별 속성(Attribute)들까지도 효율적으로 재사용할 수 있습니다.
+
+``attrib`` 컨테이너는 모든 위치, 법선, 텍스처 좌표 데이터를 각각 ``attrib.vertices``, ``attrib.normals``, ``attrib.texcoords`` 벡터에 담아 보관합니다. ``shapes`` 컨테이너에는 독립된 개별 오브젝트들과 그들의 페이스 정보가 들어있습니다. 각 페이스는 정점 배열로 이루어져 있고, 각 정점에는 위치, 법선, 텍스처 좌표 속성의 인덱스가 포함되어 있습니다. OBJ 모델은 페이스마다 재질(Material)과 텍스처를 별도로 지정할 수도 있지만, 이번 장에서는 그 기능들을 무시하겠습니다.
+
+``err`` 문자열에는 파일 로딩 중에 발생한 에러 메시지가, ``warn`` 문자열에는 재질 정의 누락 같은 경고 메시지가 담깁니다. 로딩 실패 여부는 오직 ``LoadObj`` 함수가 ``false``를 반환했는가로만 판단하면 됩니다. 앞서 언급했듯이 OBJ 파일의 페이스는 몇 개든 원하는 수의 정점을 가질 수 있지만, 우리가 만든 애플리케이션은 오직 삼각형(Triangle)만 렌더링할 수 있습니다. 다행히 ``LoadObj`` 함수에는 다각형 페이스를 자동으로 삼각형으로 쪼개주는(Triangulate) 선택 옵션 매개변수가 있으며, **이 옵션은 기본적으로 켜져 있습니다**.
+
+우리는 파일 안에 있는 모든 페이스를 하나의 거대한 단일 모델로 합칠 것이므로, 모든 셰이프(Shapes)를 순회하며 반복문을 돌려줍니다.
+
+[source,cpp]
+----
+for (const auto& shape : shapes) {
+
+}
+----
+
+자동 삼각형 분할(Triangulation) 기능 덕분에 모든 페이스가 무조건 3개의 정점을 가지도록 이미 보장되어 있습니다. 따라서 이제 정점들을 곧바로 순회하면서 그대로 우리 프로그램의 ``vertices`` 벡터에 집어넣을 수 있습니다.
+
+[source,cpp]
+----
+for (const auto& shape : shapes) {
+    for (const auto& index : shape.mesh.indices) {
+        Vertex vertex{};
+
+        vertices.push_back(vertex);
+        indices.push_back(indices.size());
+    }
+}
+----
+
+설명을 단순하게 유지하기 위해 우선은 모든 정점이 고유(Unique)하다고 가정하고, 인덱스를 단순히 1씩 증가시키며 채우겠습니다. ``index`` 변수는 ``tinyobj::index_t`` 타입으로, 내부에 ``vertex_index``, ``normal_index``, ``texcoord_index`` 멤버를 가지고 있습니다. 이 인덱스들을 사용하여 ``attrib`` 배열에 있는 실제 정점 속성 값들을 찾아내야 합니다.
+
+NOTE: 작성자 방식으로 변경함
+
+[source,cpp]
+----
+for (const auto& shape : shapes) {
+    for (const auto& index : shape.mesh.indices) {
+        Vertex vertex{
+            .pos = {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2],
+            },
+            .color = {1.0f, 10.0f, 1.0f},
+            .texCoord = {
+                attrib.texcoords[2 * index.texcoord_index + 0],
+                attrib.texcoords[2 * index.texcoord_index + 1],
+            },
+        };
+
+        vertices.push_back(vertex);
+        indices.push_back(indices.size());
+    }
+}
+----
+
+아쉽게도 ``attrib.vertices`` 배열은 ``glm::vec3`` 같은 가독성 좋은 구조가 아니라 그냥 생 플로트(``float``) 값들이 나열된 배열입니다. 따라서 인덱스에 ``3``을 곱해 수동으로 위치를 찾아야 합니다. 마찬가지로 텍스처 좌표는 요소가 ``2``개씩 짝을 이룹니다. 오프셋 ``0``, ``1``, ``2``를 더해 각각 X, Y, Z 컴포넌트에 접근하고, 텍스처 좌표의 경우에는 U와 V 컴포넌트에 접근합니다.
+
+이제 최적화 옵션을 켜고 프로그램을 실행해 보세요. (Visual Studio라면 Release 모드로, GCC라면 -O3 컴파일러 플래그를 적용합니다.) 최적화를 켜지 않으면 모델을 읽어오는 속도가 굉장히 느려집니다. 실행하면 다음과 비슷한 화면이 나타날 것입니다.
+
+video::./assets/model001.mp4[align=center,width=80%]
+
+좋습니다, 도형의 형태는 올바르게 나오는 것 같은데 텍스처가 무언가 이상하게 꼬여있지 않나요? OBJ 포맷은 수직 좌표가 ``0``일 때 이미지의 '맨 아래'를 뜻하는 좌표계를 사용합니다. 반면 우리는 Vulkan에 이미지를 업로드할 때 ``0``이 '맨 위'를 뜻하는 위에서 아래 방향의 좌표계를 사용했습니다. 이 문제를 해결하려면 텍스처 좌표의 수직(V) 컴포넌트를 위아래로 뒤집어 주면 됩니다.
+
+[source,cpp]
+----
+.texCoord = {
+    attrib.texcoords[2 * index.texcoord_index + 0],
+    1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
+},
+----
+
+프로그램을 다시 실행해 보면, 이제는 정상적인 결과 화면을 보실 수 있습니다.
+
+video::./assets/model002.mp4[align=center,width=80%]
+
+그동안 들인 모든 노력이 이 멋진 데모 하나로 마침내 보상받는 기분입니다!
+
+[quote]
+____
+모델이 회전할 때 벽 뒷면(뒷모습)이 다소 기괴하게 보이는 현상을 눈치채셨을 수도 있습니다. 이는 모델 자체가 원래 그 각도에서 바라보도록 디자인되지 않아서 발생하는 자연스러운 현상이니 걱정하지 않으셔도 됩니다.
+____
