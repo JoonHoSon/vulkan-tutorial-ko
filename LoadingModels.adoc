@@ -189,3 +189,81 @@ video::./assets/model002.mp4[align=center,width=80%]
 ____
 모델이 회전할 때 벽 뒷면(뒷모습)이 다소 기괴하게 보이는 현상을 눈치채셨을 수도 있습니다. 이는 모델 자체가 원래 그 각도에서 바라보도록 디자인되지 않아서 발생하는 자연스러운 현상이니 걱정하지 않으셔도 됩니다.
 ____
+
+== 정점 중복 제거 (Vertex deduplication)
+
+아쉽게도 우리는 아직 인덱스 버퍼의 장점을 제대로 활용하지 못하고 있습니다. 수많은 정점이 여러 개의 삼각형에 동시에 포함되다 보니, 현재 ``vertices`` 벡터에는 수많은 중복 정점 데이터가 들어가 있습니다. 따라서 우리는 고유한(Unique) 정점만 남겨두고, 동일한 정점이 다시 나타날 때마다 인덱스 버퍼를 사용하여 재사용하도록 구조를 바꿔야 합니다. 이를 구현하는 가장 직관적인 방법은 ``map``이나 ``unordered_map``을 사용하여 고유한 정점과 그에 대응하는 인덱스를 추적하는 것입니다.
+
+[source,cpp]
+----
+#include <unordered_map>
+...
+
+// void loadModel()
+std::unordered_map<Vertex, uint32_t> uniqueVerties{};
+
+for (const auto& shape : shapes) {
+    for (const auto& index : shape.mesh.indices) {
+        Vertex vertex{
+            .pos = {
+                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index + 1],
+                attrib.vertices[3 * index.vertex_index + 2],
+            },
+            .color = {1.0f, 10.0f, 1.0f},
+            .texCoord = {
+                attrib.texcoords[2 * index.texcoord_index + 0],
+                1.0f - attrib.texcoords[2 * index.texcoord_index + 1],
+            },
+        };
+
+        if (uniqueVerties.count(vertex) == 0) {
+            uniqueVerties[vertex] = static_cast<uint32_t>(vertices.size());
+
+            vertices.push_back(vertex);
+        }
+
+        indices.push_back(uniqueVerties[vertex]);
+    }
+}
+----
+
+OBJ 파일에서 정점을 하나씩 읽을 때마다, 이전에 완전히 동일한 위치와 텍스처 좌표를 가진 정점을 처리한 적이 있는지 확인합니다. 만약 처음 보는 정점이라면 ``vertices``에 추가하고 그 인덱스를 ``uniqueVertices`` 컨테이너에 저장합니다. 그 후 새 정점의 인덱스를 ``indices``에 넣어줍니다. 반면 이미 한 번 처리했던 정점이라면, ``uniqueVertices``에서 기존에 저장해 둔 인덱스를 찾아내어 ``indices``에 그대로 넣어주기만 하면 됩니다.
+
+하지만 이 상태로 빌드하면 컴파일 에러가 발생합니다. 우리가 직접 정의한 Vertex 구조체 같은 사용자 정의 타입을 해시 테이블(Hash Table)의 키(Key)로 사용하려면 두 가지 기능, 즉 '동등성 비교(Equality Test)'와 '해시 값 계산(Hash Calculation)' 함수를 직접 구현해야 하기 때문입니다. 동등성 비교는 Vertex 구조체 내부에 == 연산자를 오버라이딩하여 간단하게 구현할 수 있습니다.
+
+[source,cpp]
+----
+// struct Vertex
+
+bool operator==(const Vertex& other) const {
+    return pos == other.pos && color == other.color && texCoord == other.texCoord;
+}
+----
+
+``Vertex``를 위한 해시 함수는 ``std::hash<T>``의 템플릿 특수화(Template Specialization)를 명시하여 구현합니다. 해시 함수는 꽤 복잡한 주제이지만, link:http://en.cppreference.com/w/cpp/utility/hash[cppreference.com]에서는 구조체의 각 필드들을 결합하여 준수한 품질의 해시 함수를 만드는 다음과 같은 방식을 추천하고 있습니다.
+
+[source,cpp]
+----
+namespace std {
+    template<> struct hash<Vertex> {
+        size_t operator()(Vertex const& vertex) const {
+            return ((hash<glm::vec3>()(vertex.pos) ^
+                   (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+                   (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    }
+}
+----
+
+이 해시 함수 코드는 ``Vertex`` 구조체 바깥에 위치해야 합니다. 또한 GLM 타입들을 위한 해시 함수를 사용하려면 다음 헤더 파일을 포함해야 합니다.
+
+[source,cpp]
+----
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+----
+
+이 해시 함수들은 ``gtx`` 폴더 안에 정의되어 있는데, 이는 기술적으로 해당 기능이 아직 GLM의 실험적 확장(Experimental Extension) 단계임을 의미합니다. 따라서 이 기능을 사용하려면 ``GLM_ENABLE_EXPERIMENTAL`` 매크로를 정의해야 합니다. 미래의 새로운 GLM 버전에서 API가 바뀔 수도 있다는 뜻이지만, 실제로는 이미 매우 안정적으로 유지되고 있는 API입니다.
+
+이제 컴파일을 진행하면 에러 없이 성공적으로 프로그램이 실행될 것입니다. ``vertices`` 벡터의 크기를 확인해 보면, 정점의 개수가 기존 1,500,000개에서 265,645개로 대폭 줄어든 것을 볼 수 있습니다! 이는 하나의 정점이 평균 약 6개의 삼각형에서 재사용되고 있음을 뜻합니다. 결과적으로 GPU 메모리를 엄청나게 절약하게 된 것입니다.
