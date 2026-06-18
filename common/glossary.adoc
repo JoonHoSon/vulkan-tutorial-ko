@@ -121,3 +121,7 @@
 :VkSubpassDependency: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSubpassDependency.html
 :VkClearValue: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkClearValue.html
 :VkGraphicsPipelineCreateInfo: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkGraphicsPipelineCreateInfo.html
+:vkCmdBlitImage: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkCmdBlitImage.html
+:VkImageMemoryBarrier: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkImageMemoryBarrier.html
+:VkFilter: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkFilter.html
+:VkSampler: link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkSampler.html
