@@ -406,3 +406,5 @@ VkSamplerCreateInfo samplerInfo{
 video::./assets/with_mipmaps_minLoad.mp4[align=center,width=80%]
 
 이 결과물은 오브젝트가 카메라에서 멀어졌을 때 고단계(작은 크기)의 밉 레벨이 실제로 어떻게 적용되는지를 미리 보여주는 예시라고 생각하시면 됩니다.
+
+NOTE: link:./Multisampling.html[Multisample 이동]

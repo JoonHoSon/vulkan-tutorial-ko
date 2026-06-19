@@ -217,7 +217,7 @@ vkFreeMemory(_device, stagingBufferMemory, nullptr);
 
 프로그램을 실행하여 늘 보던 삼각형이 다시 잘 나오는지 확인해 보세요. 지금 당장은 성능 향상이 눈에 보이지 않겠지만, 이제 정점 데이터를 고성능 메모리에서 직접 로드하고 있는 상태입니다. 이는 앞으로 더 복잡한 지오메트리를 렌더링하기 시작할 때 빛을 발하게 됩니다.
 
-== 결론 (Conclusion)
+== {conclusion}
 
 실제 상용 애플리케이션을 개발할 때는 모든 버퍼마다 link:https://www.khronos.org/registry/vulkan/specs/1.0/man/html/vkAllocateMemory.html[``vkAllocateMemory``]를 개별적으로 호출해서는 안 된다는 점을 꼭 기억해야 합니다. 동시에 할당할 수 있는 메모리 최대 개수는 물리 디바이스의 제한 사항인 ``maxMemoryAllocationCount``에 의해 제한되는데, NVIDIA GTX 1080 같은 고사양 하드웨어조차 이 값이 ``4096``개 정도로 매우 적을 수 있습니다. 수많은 객체의 메모리를 동시에 올바르게 할당하려면, 단 한 번의 커다란 메모리 할당을 수행한 뒤 여러 함수에서 보았던 오프셋(``offset``) 매개변수들을 활용해 이 거대한 덩어리를 여러 객체가 나누어 쓰도록 커스텀 할당기(allocator)를 구현해야 합니다.
 
